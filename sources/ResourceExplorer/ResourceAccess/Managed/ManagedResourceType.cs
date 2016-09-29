@@ -10,7 +10,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
         Embedded,
         Designer,
         ResourceManager,
-        //this type will be used for resources (file handles) locked when analysing resources from a running process
+        //this type will be used for resources (file handles) locked when analysing resources from a running process (if I code that...)
         Content
     }
 }

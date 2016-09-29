@@ -20,5 +20,11 @@ namespace ResourceExplorer.Utilities
             path2 = Path.GetFullPath(path2);
             return string.Equals(path1, path2, StringComparison.InvariantCultureIgnoreCase);
         }
+
+        public static bool IsValidPath(string path)
+        {
+            var invalidChars = Path.GetInvalidPathChars();
+            return !path.Any(c => invalidChars.Contains(c));
+        }
     }
 }

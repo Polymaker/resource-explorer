@@ -52,9 +52,24 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
+    <Compile Include="Native\COM\ExtractIconpwFlags.cs" />
+    <Compile Include="Native\COM\ExtractIconuFlags.cs" />
+    <Compile Include="Native\COM\IExtractIcon.cs" />
+    <Compile Include="Native\Enums\SFGAOF.cs" />
+    <Compile Include="Native\COM\IClassFactory.cs" />
+    <Compile Include="Native\Types\ITEMIDLIST.cs" />
     <Compile Include="Native\API\Kernel32.cs" />
     <Compile Include="Native\API\Ntdll.cs" />
+    <Compile Include="Native\API\Shell32.cs" />
+    <Compile Include="Native\Types\SHITEMID.cs" />
     <Compile Include="Native\API\User32.cs" />
+    <Compile Include="Native\ComHelper.cs" />
+    <Compile Include="Native\COM\ESFGAO.cs" />
+    <Compile Include="Native\COM\ESHCONTF.cs" />
+    <Compile Include="Native\COM\ESHGDN.cs" />
+    <Compile Include="Native\COM\ESTRRET.cs" />
+    <Compile Include="Native\COM\IShellFolder.cs" />
+    <Compile Include="Native\COM\STRRET.cs" />
     <Compile Include="Native\Enums\ACCESS_MASK.cs" />
     <Compile Include="Native\Enums\ResourceType.cs" />
     <Compile Include="Native\SafeProcessHandle.cs" />
@@ -69,7 +84,7 @@
     <Compile Include="Native\Utilities.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ResourceAccess\Managed\CrossDomainDeserializer.cs" />
+    <Compile Include="ResourceAccess\Managed\CrossDomainSerializer.cs" />
     <Compile Include="ResourceAccess\Managed\ManagedResourceInfo.cs" />
     <Compile Include="ResourceAccess\Managed\ManagedResourceType.cs" />
     <Compile Include="ResourceAccess\Managed\ResourceManagerProxy.cs" />
@@ -81,6 +96,7 @@
     <Compile Include="ResourceAccess\Native\NativeResourceType.cs" />
     <Compile Include="ResourceAccess\ResourceAccessor.cs" />
     <Compile Include="ResourceAccess\ResourceInfo.cs" />
+    <Compile Include="ResourceAccess\FileIconHelper.cs" />
     <Compile Include="Utilities\ExtensionMethods\StringExtensions.cs" />
     <Compile Include="Utilities\PathUtils.cs" />
     <Compile Include="Utilities\StreamUtils.cs" />
@@ -113,6 +129,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <Content Include="Resources\blank_16x16.png" />
+    <Content Include="Resources\dll_file_16x16.png" />
+    <Content Include="Resources\executable_16x16.png" />
+    <Content Include="Resources\folder_16x16.png" />
+    <Content Include="Resources\resx_file_16x16.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

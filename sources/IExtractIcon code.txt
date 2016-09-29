@@ -1,0 +1,22 @@
+var solidworksShellExPath = @"C:\Program Files\Common Files\SOLIDWORKS Shared\sldwinshellextu.dll";
+
+var shellExXlsid = new Guid("1CA9F15F-95AD-4de2-9F8A-360029B46A42");
+var shellExLib = Kernel32.LoadLibrary(solidworksShellExPath);
+var entryAddr = Kernel32.GetProcAddress(shellExLib, "DllGetClassObject");
+var iUnknownGuid = new Guid("00000000-0000-0000-C000-000000000046");
+var iExtractIconGuid = typeof(IExtractIcon).GUID;
+
+var library = LibraryModule.LoadModule(solidworksShellExPath);
+var sb = new StringBuilder(260, 260);
+var myObject = (IExtractIcon)ComHelper.CreateInstance(library, shellExXlsid);
+int iconIndex;
+ExtractIconuFlags flags = ExtractIconuFlags.GilDefaulticon;
+ExtractIconpwFlags pwFlags;
+var testPtr = Marshal.GetComInterfaceForObject(myObject, typeof(IExtractIcon), CustomQueryInterfaceMode.Ignore);
+var extractObj = (IExtractIcon)Marshal.GetTypedObjectForIUnknown(testPtr, typeof(IExtractIcon));
+//int res = extractObj.GetIconLocation(flags, sb, sb.Capacity, out iconIndex, out pwFlags);
+IntPtr smallIcon = IntPtr.Zero;
+IntPtr largeIcon = IntPtr.Zero;
+int res = extractObj.Extract(testFilePath, 0, out largeIcon, out smallIcon, 64);
+var fileIco = Icon.FromHandle(smallIcon);
+fileIco.ToBitmap().Save("OMG.png", ImageFormat.Png);

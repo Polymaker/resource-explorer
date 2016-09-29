@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace ResourceExplorer.ResourceAccess.Managed
@@ -29,10 +30,10 @@ namespace ResourceExplorer.ResourceAccess.Managed
             get { return Resources.Values.ToList(); }
         }
 
-        public ResourceManagerProxy(string baseName, TemporaryAssembly assembly)
+        public ResourceManagerProxy(string baseName, Assembly assembly)
         {
             var typeName = baseName.Replace(".resources", string.Empty);
-            manager = new System.Resources.ResourceManager(typeName, assembly.Library);
+            manager = new System.Resources.ResourceManager(typeName, assembly);
 
             manager.GetObject(string.Empty);//force load ResourceSet
 

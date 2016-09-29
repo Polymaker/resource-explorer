@@ -83,7 +83,7 @@ namespace ResourceExplorer.ResourceAccess
                 }
 
                 if (resourceStream != null)
-                    return TempAppDomain.DeserializeObject(resourceStream);
+                    return TempAppDomain.ReleaseObject(resourceStream);
             }
 
             return null;
@@ -114,7 +114,7 @@ namespace ResourceExplorer.ResourceAccess
                 {
                     var resourceManager = GetResourceManager(managedResource);
                     var proxyImage = resourceManager.GetObject(managedResource.Name) as Image;
-                    return TempAppDomain.DeserializeImage(proxyImage);
+                    return TempAppDomain.ReleaseObject(proxyImage);
                 }
 
                 //Embedded resources are always stored as stream, and we can't know for sure of a stream is an image
@@ -148,13 +148,23 @@ namespace ResourceExplorer.ResourceAccess
                 {
                     var resourceManager = GetResourceManager(managedResource);
                     var proxyIcon = resourceManager.GetObject(managedResource.Name) as Icon;
-                    return TempAppDomain.DeserializeIcon(proxyIcon);
+                    return TempAppDomain.ReleaseObject(proxyIcon);
                 }
 
                 //Embedded resources are always stored as stream, and we can't know for sure of a stream is an image
             }
 
             return null;
+        }
+
+        public object GetObject(ManagedResourceInfo resource)
+        {
+            if (!resource.IsFromDesigner)
+                return null;
+
+            var resourceManager = GetResourceManager(resource);
+
+            return TempAppDomain.ReleaseObject(resourceManager.GetObject(resource.Name), resource.SystemType);
         }
 
         private ResourceManagerProxy GetResourceManager(ManagedResourceInfo managedResInfo)
@@ -195,5 +205,6 @@ namespace ResourceExplorer.ResourceAccess
 
             GC.SuppressFinalize(this);
         }
+
     }
 }

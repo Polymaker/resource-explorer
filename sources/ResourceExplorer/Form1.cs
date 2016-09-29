@@ -3,14 +3,9 @@ using ResourceExplorer.ResourceAccess.Managed;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ResourceExplorer
@@ -25,25 +20,33 @@ namespace ResourceExplorer
         private void button1_Click(object sender, EventArgs e)
         {
 
-            var module = new ModuleInfo(@"D:\Development\github\resource-explorer\sources\ResourceExplorer\bin\Release\ResourceExplorer.exe");
+            var module = new ModuleInfo(@"D:\Development\github\ldd-modder\LDDModder\Application\bin\Debug\LDD Modder.exe");
             module.LoadResources();
             module.FindSatelliteAssemblies();
 
-            Stream testStream = null;
-            Image resourceImage = null;
+            //Stream testStream = null;
+            //Image resourceImage = null;
             using (var accessor = module.GetAccessor())
             {
-                var myRes = module.Resources.OfType<ManagedResourceInfo>().FirstOrDefault(r => typeof(Image).IsAssignableFrom(r.SystemType));
-                if (myRes != null)
+                foreach (var managedRes in module.Resources.OfType<ManagedResourceInfo>())
                 {
-                    resourceImage = accessor.GetImage(myRes);
+                    var lvi = new ListViewItem(managedRes.Name);
+                    lvi.SubItems.Add(managedRes.Kind.ToString());
+                    lvi.SubItems.Add(managedRes.SystemType.Name);
+                    var typeConv = TypeDescriptor.GetConverter(managedRes.SystemType);
+                    if (typeConv != null && typeConv.CanConvertTo(typeof(string)))
+                    {
+                        var resValue = accessor.GetObject(managedRes);
+                        lvi.SubItems.Add((string)typeConv.ConvertTo(resValue, typeof(string)));
+                    }
+                    listView1.Items.Add(lvi);
                 }
+                //var myRes = module.Resources.OfType<ManagedResourceInfo>().FirstOrDefault(r => typeof(Image).IsAssignableFrom(r.SystemType));
+                //if (myRes != null)
+                //{
+                //    resourceImage = accessor.GetImage(myRes);
+                //}
             }
-            pictureBox1.Image = resourceImage;
-            //var ms = new MemoryStream();
-            //testStream.CopyTo(ms);
-            //var data = ms.ToArray();
-            //Console.WriteLine(data.Length);
         }
     }
 }

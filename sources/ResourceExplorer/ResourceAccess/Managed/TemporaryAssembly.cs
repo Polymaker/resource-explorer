@@ -12,12 +12,9 @@ namespace ResourceExplorer.ResourceAccess.Managed
 {
     public class TemporaryAssembly : MarshalByRefObject
     {
-        private Assembly _Library;
+        private readonly Assembly _Library;
 
-        /// <summary>
-        /// this should be referenced only by objects residing in the same (temp) AppDomain as this object
-        /// </summary>
-        protected internal Assembly Library
+        private Assembly Library
         {
             get { return _Library; }
         }
@@ -32,7 +29,12 @@ namespace ResourceExplorer.ResourceAccess.Managed
             get { return Library.FullName; }
         }
 
-        internal void Initialize(string assemblyLocation)
+        public string Location
+        {
+            get { return Library.Location; }
+        }
+
+        public TemporaryAssembly(string assemblyLocation)
         {
             _Library = Assembly.LoadFrom(assemblyLocation);
         }
@@ -49,7 +51,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
         public ResourceManagerProxy GetResourceManager(string name)
         {
-            return TemporaryAppDomain.CreateRefObject<ResourceManagerProxy>(AppDomain.CurrentDomain, name, this);
+            return TemporaryAppDomain.CreateRefObject<ResourceManagerProxy>(AppDomain.CurrentDomain, name, Library);
         }
     }
 }

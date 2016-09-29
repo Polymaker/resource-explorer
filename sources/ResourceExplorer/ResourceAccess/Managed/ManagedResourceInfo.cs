@@ -32,9 +32,13 @@ namespace ResourceExplorer.ResourceAccess.Managed
             get { return _ResourceManagerName; }
         }
         
+        /// <summary>
+        /// AKA a ResourceManager entry
+        /// </summary>
         public bool IsFromDesigner
         {
-            get { return ResourceManagerName.Length > 0; }
+            //get { return ResourceManagerName.Length > 0; }
+            get { return Kind == ManagedResourceType.Designer; }
         }
 
         public bool IsResourceManager

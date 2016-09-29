@@ -12,7 +12,7 @@ namespace ResourceExplorer.Native
     [SecurityCritical]
     public class SafeProcessHandle : SafeHandleZeroOrMinusOneIsInvalid
     {
-        internal static SafeProcessHandle InvalidHandle = new SafeProcessHandle(IntPtr.Zero);
+        internal static readonly SafeProcessHandle InvalidHandle = new SafeProcessHandle(IntPtr.Zero);
 
         internal SafeProcessHandle()
             : base(true)
