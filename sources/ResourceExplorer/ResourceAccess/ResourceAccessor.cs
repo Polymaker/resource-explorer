@@ -1,8 +1,14 @@
 ﻿using ResourceExplorer.Native.API;
 using ResourceExplorer.ResourceAccess.Managed;
+using ResourceExplorer.ResourceAccess.Native;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 
 namespace ResourceExplorer.ResourceAccess
@@ -42,7 +48,114 @@ namespace ResourceExplorer.ResourceAccess
             }
         }
 
-        #region Managed resources methods & functions
+        #region Resources methods & functions
+
+        public Stream GetStream(ResourceInfo resource)
+        {
+            if (resource == null || resource.Module != Module)
+                return null;
+
+            if (resource.IsNative)
+            {
+                var nativeResource = (NativeResourceInfo)resource;
+                var resHandle = nativeResource.GetHandle(ModuleHandle);
+                var resData = Kernel32.GetResourceData(resHandle, ModuleHandle);
+                return new MemoryStream(resData);
+            }
+            else
+            {
+                var managedResource = (ManagedResourceInfo)resource;
+
+                if (managedResource.IsResourceManager)
+                    return null;
+
+                Stream resourceStream = null;
+
+                if (managedResource.IsFromDesigner)
+                {
+                    var resourceManager = GetResourceManager(managedResource);
+                    if (typeof(Stream).IsAssignableFrom(managedResource.SystemType))
+                        resourceStream = resourceManager.GetStream(managedResource.Name);
+                }
+                else
+                {
+                    resourceStream = ManagedAssembly.GetManifestResourceStream(managedResource.Name);
+                }
+
+                if (resourceStream != null)
+                    return TempAppDomain.DeserializeObject(resourceStream);
+            }
+
+            return null;
+        }
+
+        public Image GetImage(ResourceInfo resource)
+        {
+            if (resource == null || resource.Module != Module)
+                return null;
+
+            if (resource.IsNative)
+            {
+                var nativeResource = (NativeResourceInfo)resource;
+
+                if (nativeResource.Kind != NativeResourceType.Bitmap)
+                    return null;
+
+                return User32.GetResourceBitmap(ModuleHandle, nativeResource.Id);
+            }
+            else
+            {
+                var managedResource = (ManagedResourceInfo)resource;
+
+                if (!typeof(Image).IsAssignableFrom(managedResource.SystemType))
+                    return null;
+
+                if (managedResource.IsFromDesigner)
+                {
+                    var resourceManager = GetResourceManager(managedResource);
+                    var proxyImage = resourceManager.GetObject(managedResource.Name) as Image;
+                    return TempAppDomain.DeserializeImage(proxyImage);
+                }
+
+                //Embedded resources are always stored as stream, and we can't know for sure of a stream is an image
+            }
+
+            return null;
+        }
+
+        public Icon GetIcon(ResourceInfo resource)
+        {
+            if (resource == null || resource.Module != Module)
+                return null;
+
+            if (resource.IsNative)
+            {
+                var nativeResource = (NativeResourceInfo)resource;
+
+                if (!(nativeResource.Kind == NativeResourceType.Icon || nativeResource.Kind == NativeResourceType.IconGroup))
+                    return null;
+
+                return User32.GetResourceIcon(ModuleHandle, nativeResource.Id);
+            }
+            else
+            {
+                var managedResource = (ManagedResourceInfo)resource;
+
+                if (!typeof(Icon).IsAssignableFrom(managedResource.SystemType))
+                    return null;
+
+                if (managedResource.IsFromDesigner)
+                {
+                    var resourceManager = GetResourceManager(managedResource);
+                    var proxyIcon = resourceManager.GetObject(managedResource.Name) as Icon;
+                    return TempAppDomain.DeserializeIcon(proxyIcon);
+                }
+
+                //Embedded resources are always stored as stream, and we can't know for sure of a stream is an image
+            }
+
+            return null;
+        }
 
         private ResourceManagerProxy GetResourceManager(ManagedResourceInfo managedResInfo)
         {
@@ -67,10 +180,17 @@ namespace ResourceExplorer.ResourceAccess
                 resManager.Dispose();
 
             ResourceManagers.Clear();
+
             if (TempAppDomain != null)
             {
                 TempAppDomain.Dispose();
                 TempAppDomain = null;
+            }
+
+            if (ModuleHandle != IntPtr.Zero)
+            {
+                Kernel32.FreeLibrary(ModuleHandle);
+                ModuleHandle = IntPtr.Zero;
             }
 
             GC.SuppressFinalize(this);

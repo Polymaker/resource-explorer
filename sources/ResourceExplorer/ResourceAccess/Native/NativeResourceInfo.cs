@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ResourceExplorer.Native.API;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -31,6 +32,15 @@ namespace ResourceExplorer.ResourceAccess.Native
         {
             _Kind = kind;
             _Id = id;
+        }
+
+        internal IntPtr GetHandle(IntPtr moduleHandle)
+        {
+            IntPtr resourceHandle = Kernel32.FindResource(moduleHandle, Id, (ResourceExplorer.Native.Enums.ResourceType)Kind);
+            if (resourceHandle != IntPtr.Zero)
+                return resourceHandle;
+            resourceHandle = Kernel32.FindResource(moduleHandle, Name, (ResourceExplorer.Native.Enums.ResourceType)Kind);
+            return resourceHandle;
         }
     }
 }

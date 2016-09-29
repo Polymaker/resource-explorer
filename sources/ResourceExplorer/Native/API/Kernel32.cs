@@ -143,7 +143,7 @@ namespace ResourceExplorer.Native.API
             };
             GC.KeepAlive(enumDelegate);
             EnumResourceTypes(moduleHandle, enumDelegate, IntPtr.Zero);
-            typeList = typeList.Distinct().ToList();
+            typeList = typeList.Distinct().ToList();//IDR why this is needed
             return typeList;
         }
 

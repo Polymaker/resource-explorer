@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -15,6 +16,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
         private bool _IsDisposed;
         private AppDomain Domain;
         private static ConcurrentDictionary<int, TemporaryAppDomain> ActiveDomains;
+        private CrossDomainDeserializer Deserializer;
 
         public int Id
         {
@@ -43,6 +45,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
             Domain = AppDomain.CreateDomain(name);
             _Id = Domain.Id;
             Register(this);
+            Deserializer = CreateRefObject<CrossDomainDeserializer>();
         }
 
         public TemporaryAppDomain()
@@ -137,6 +140,45 @@ namespace ResourceExplorer.ResourceAccess.Managed
             var tmpAssem = CreateRefObject<TemporaryAssembly>();
             tmpAssem.Initialize(assemblyFile);
             return tmpAssem;
+        }
+
+        public Image DeserializeImage(Image proxyImage)
+        {
+            try
+            {
+                return Image.FromStream(Deserializer.GetImageStream(proxyImage));
+            }
+            finally
+            {
+                proxyImage.Dispose();
+            }
+        }
+
+        public Icon DeserializeIcon(Icon proxyIcon)
+        {
+            try
+            {
+                return new Icon(Deserializer.GetIconStream(proxyIcon));
+            }
+            finally
+            {
+                proxyIcon.Dispose();
+            }
+        }
+
+        public T DeserializeObject<T>(T value)
+        {
+            
+            return (T)DeserializeObject(value, typeof(T));
+        }
+
+        public object DeserializeObject(object value, Type objectType)
+        {
+            if (typeof(Image).IsAssignableFrom(objectType))
+                return DeserializeImage(value as Image);
+            if (typeof(Icon).IsAssignableFrom(objectType))
+                return DeserializeIcon(value as Icon);
+            return Deserializer.DeserializeObject(value, objectType);
         }
     }
 }

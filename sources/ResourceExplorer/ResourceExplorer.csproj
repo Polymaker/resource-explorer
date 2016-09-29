@@ -69,9 +69,11 @@
     <Compile Include="Native\Utilities.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ResourceAccess\Managed\CrossDomainDeserializer.cs" />
     <Compile Include="ResourceAccess\Managed\ManagedResourceInfo.cs" />
     <Compile Include="ResourceAccess\Managed\ManagedResourceType.cs" />
     <Compile Include="ResourceAccess\Managed\ResourceManagerProxy.cs" />
+    <Compile Include="ResourceAccess\Managed\SatelliteAssemblyInfo.cs" />
     <Compile Include="ResourceAccess\Managed\TemporaryAppDomain.cs" />
     <Compile Include="ResourceAccess\Managed\TemporaryAssembly.cs" />
     <Compile Include="ResourceAccess\ModuleInfo.cs" />
@@ -80,8 +82,12 @@
     <Compile Include="ResourceAccess\ResourceAccessor.cs" />
     <Compile Include="ResourceAccess\ResourceInfo.cs" />
     <Compile Include="Utilities\ExtensionMethods\StringExtensions.cs" />
+    <Compile Include="Utilities\PathUtils.cs" />
     <Compile Include="Utilities\StreamUtils.cs" />
     <Compile Include="Utilities\UserAccount.cs" />
+    <EmbeddedResource Include="Form1.fr.resx">
+      <DependentUpon>Form1.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
@@ -108,7 +114,6 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

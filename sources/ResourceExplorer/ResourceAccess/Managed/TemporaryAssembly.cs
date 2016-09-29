@@ -13,12 +13,11 @@ namespace ResourceExplorer.ResourceAccess.Managed
     public class TemporaryAssembly : MarshalByRefObject
     {
         private Assembly _Library;
-        private CultureInfo[] _Cultures;
 
         /// <summary>
         /// this should be referenced only by objects residing in the same (temp) AppDomain as this object
         /// </summary>
-        public Assembly Library
+        protected internal Assembly Library
         {
             get { return _Library; }
         }
@@ -33,41 +32,9 @@ namespace ResourceExplorer.ResourceAccess.Managed
             get { return Library.FullName; }
         }
 
-        public CultureInfo[] Cultures
-        {
-            get { return _Cultures; }
-        }
-
         internal void Initialize(string assemblyLocation)
         {
             _Library = Assembly.LoadFrom(assemblyLocation);
-            _Cultures = new CultureInfo[1] { CultureInfo.InvariantCulture };
-        }
-
-        public void LoadSatelliteAssemblies()
-        {
-            var assemblyDir = Path.GetDirectoryName(Library.Location);
-            var assemblyName = Library.GetName().Name;
-            var resourcesDlls = Directory.GetFiles(assemblyDir, assemblyName + ".resources.dll", SearchOption.AllDirectories);
-
-            if (resourcesDlls.Length > 0)
-            {
-                var cultureList = new List<CultureInfo>();
-                cultureList.Add(CultureInfo.InvariantCulture);
-                for (int i = 0; i < resourcesDlls.Length; i++)
-                {
-                    //Assembly.LoadFrom(resourcesDlls[i]);
-                    try
-                    {
-                        var dirInfo = new DirectoryInfo(Path.GetDirectoryName(resourcesDlls[i]));
-                        var culture = CultureInfo.GetCultureInfo(dirInfo.Name);
-                        if (culture != null)
-                            cultureList.Add(culture);
-                    }
-                    catch { }
-                }
-                _Cultures = cultureList.ToArray();
-            }
         }
 
         public string[] GetManifestResourceNames()
@@ -77,11 +44,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
         public Stream GetManifestResourceStream(string resourceName)
         {
-            var inDomainStream = Library.GetManifestResourceStream(resourceName);
-            if (inDomainStream == null)
-                return null;
-            //transfert the stream into a memory stream so we can pass it accross app domains
-            return StreamUtils.ToMemoryStream(inDomainStream, true);
+            return Library.GetManifestResourceStream(resourceName);
         }
 
         public ResourceManagerProxy GetResourceManager(string name)

@@ -1,9 +1,11 @@
 ﻿using ResourceExplorer.Native.API;
 using ResourceExplorer.ResourceAccess.Managed;
 using ResourceExplorer.ResourceAccess.Native;
+using ResourceExplorer.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -19,6 +21,7 @@ namespace ResourceExplorer.ResourceAccess
         private readonly string _Location;
         private readonly FileVersionInfo _VersionInfo;
         private List<ResourceInfo> _Resources;
+        private List<SatelliteAssemblyInfo> _SatelliteAssemblies;
 
         public string Name
         {
@@ -55,6 +58,16 @@ namespace ResourceExplorer.ResourceAccess
             get { return _ResourcesLoaded; }
         }
 
+        public IList<SatelliteAssemblyInfo> SatelliteAssemblies
+        {
+            get { return _SatelliteAssemblies.AsReadOnly(); }
+        }
+
+        public IList<ResourceInfo> Resources
+        {
+            get { return _Resources.AsReadOnly(); }
+        }
+
         public ModuleInfo(string location)
         {
             _Location = location;
@@ -64,6 +77,27 @@ namespace ResourceExplorer.ResourceAccess
             _Name = Path.GetFileNameWithoutExtension(FileName);
             _ResourcesLoaded = false;
             _Resources = new List<ResourceInfo>();
+            _SatelliteAssemblies = new List<SatelliteAssemblyInfo>();
+        }
+
+        public void FindSatelliteAssemblies()
+        {
+            var moduleDirectory = new DirectoryInfo(Path.GetDirectoryName(Location));
+            
+            foreach (var resourceDllFile in moduleDirectory.EnumerateFiles(Name + ".resources.dll", SearchOption.AllDirectories))
+            {
+                if (!PathUtils.AreEqual(resourceDllFile.Directory.Parent, moduleDirectory))//only level 1 subdir
+                    continue;
+                try
+                {
+                    var culture = CultureInfo.GetCultureInfo(resourceDllFile.Directory.Name);
+                    if (culture != null)
+                    {
+                        _SatelliteAssemblies.Add(new SatelliteAssemblyInfo(resourceDllFile.FullName, culture));
+                    }
+                }
+                catch { }
+            }
         }
 
         #region Resources loading
@@ -136,8 +170,6 @@ namespace ResourceExplorer.ResourceAccess
         }
 
         #endregion
-
-
 
         public ResourceAccessor GetAccessor()
         {

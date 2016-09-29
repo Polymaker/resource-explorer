@@ -70,24 +70,15 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
         public Stream GetStream(string name)
         {
-            var inDomainStream = manager.GetStream(name);
-            if (inDomainStream == null)
-                return null;
-            //transfert the stream into a memory stream so we can pass it accross app domains
-            return StreamUtils.ToMemoryStream(inDomainStream, true);
+            return manager.GetStream(name);
         }
 
         public Stream GetStream(string name, CultureInfo culture)
         {
-            var inDomainStream = manager.GetStream(name, culture);
-            if (inDomainStream == null)
-                return null;
-            //transfert the stream into a memory stream so we can pass it accross app domains
-            return StreamUtils.ToMemoryStream(inDomainStream, true);
+            return manager.GetStream(name, culture);
         }
 
         #endregion
-
 
 
         ~ResourceManagerProxy()
