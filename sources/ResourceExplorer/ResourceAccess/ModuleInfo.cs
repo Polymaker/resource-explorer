@@ -1,4 +1,6 @@
-﻿using ResourceExplorer.Native.API;
+﻿using ResourceExplorer.Native;
+using ResourceExplorer.Native.API;
+using ResourceExplorer.Native.PE;
 using ResourceExplorer.ResourceAccess.Managed;
 using ResourceExplorer.ResourceAccess.Native;
 using ResourceExplorer.Utilities;
@@ -18,10 +20,14 @@ namespace ResourceExplorer.ResourceAccess
         private readonly string _FileName;
         private /*readonly*/ string _Name;
         private readonly bool _IsManaged;
+        private bool _Is64Bit;
         private readonly string _Location;
         private readonly FileVersionInfo _VersionInfo;
         private List<ResourceInfo> _Resources;
         private List<SatelliteAssemblyInfo> _SatelliteAssemblies;
+        private List<ModuleRef> _ReferencedModules;
+
+        #region Properties
 
         public string Name
         {
@@ -48,6 +54,11 @@ namespace ResourceExplorer.ResourceAccess
             get { return _Location; }
         }
 
+        public bool Is64Bit
+        {
+            get { return _Is64Bit; }
+        }
+        
         public bool IsManaged
         {
             get { return _IsManaged; }
@@ -63,41 +74,39 @@ namespace ResourceExplorer.ResourceAccess
             get { return _SatelliteAssemblies.AsReadOnly(); }
         }
 
+        public IList<ModuleRef> ReferencedModules
+        {
+            get { return _ReferencedModules.AsReadOnly(); }
+        }
+
         public IList<ResourceInfo> Resources
         {
             get { return _Resources.AsReadOnly(); }
         }
 
+        public IList<CultureInfo> Cultures
+        {
+            get
+            {
+                return SatelliteAssemblies.Select(s => s.Culture).Distinct().ToList();
+            }
+        }
+
+        #endregion
+
         public ModuleInfo(string location)
         {
             _Location = location;
-            _IsManaged = CheckManagedAssembly(location);
+            if (!PEHelper.VerifyPEModule(location, out _IsManaged, out _Is64Bit))
+                throw new BadImageFormatException("");
+
             _VersionInfo = FileVersionInfo.GetVersionInfo(location);
             _FileName = Path.GetFileName(location);
             _Name = Path.GetFileNameWithoutExtension(FileName);
             _ResourcesLoaded = false;
             _Resources = new List<ResourceInfo>();
             _SatelliteAssemblies = new List<SatelliteAssemblyInfo>();
-        }
-
-        public void FindSatelliteAssemblies()
-        {
-            var moduleDirectory = new DirectoryInfo(Path.GetDirectoryName(Location));
-            
-            foreach (var resourceDllFile in moduleDirectory.EnumerateFiles(Name + ".resources.dll", SearchOption.AllDirectories))
-            {
-                if (!PathUtils.AreEqual(resourceDllFile.Directory.Parent, moduleDirectory))//only level 1 subdir
-                    continue;
-                try
-                {
-                    var culture = CultureInfo.GetCultureInfo(resourceDllFile.Directory.Name);
-                    if (culture != null)
-                    {
-                        _SatelliteAssemblies.Add(new SatelliteAssemblyInfo(resourceDllFile.FullName, culture));
-                    }
-                }
-                catch { }
-            }
+            _ReferencedModules = new List<ModuleRef>();
         }
 
         #region Resources loading
@@ -169,74 +178,104 @@ namespace ResourceExplorer.ResourceAccess
             }
         }
 
-        #endregion
-
         public ResourceAccessor GetAccessor()
         {
             return new ResourceAccessor(this);
         }
 
-        public static bool CheckManagedAssembly(string fileName)
+        #endregion
+
+        #region Referenced modules searching
+
+        public void FindSatelliteAssemblies()
         {
-            using (Stream fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read))
+            if (!IsManaged)
+                return;
+
+            _SatelliteAssemblies.Clear();
+
+            var moduleDirectory = new DirectoryInfo(Path.GetDirectoryName(Location));
+
+            foreach (var resourceDllFile in moduleDirectory.EnumerateFiles(Name + ".resources.dll", SearchOption.AllDirectories))
             {
-                using (BinaryReader binaryReader = new BinaryReader(fileStream))
+                if (!PathUtils.AreEqual(resourceDllFile.Directory.Parent, moduleDirectory))//only level 1 subdir
+                    continue;
+                try
                 {
-                    if (fileStream.Length < 64)
-                        return false;
-
-                    //PE Header starts @ 0x3C (60). Its a 4 byte header.
-                    fileStream.Position = 0x3C;
-                    uint peHeaderPointer = binaryReader.ReadUInt32();
-                    if (peHeaderPointer == 0)
-                        peHeaderPointer = 0x80;
-
-                    // Ensure there is at least enough room for the following structures:
-                    //     24 byte PE Signature & Header
-                    //     28 byte Standard Fields         (24 bytes for PE32+)
-                    //     68 byte NT Fields               (88 bytes for PE32+)
-                    // >= 128 byte Data Dictionary Table
-                    if (peHeaderPointer > fileStream.Length - 256)
+                    var culture = CultureInfo.GetCultureInfo(resourceDllFile.Directory.Name);
+                    if (culture != null)
                     {
-                        return false;
+                        _SatelliteAssemblies.Add(new SatelliteAssemblyInfo(resourceDllFile.FullName, culture));
                     }
+                }
+                catch { }
+            }
+        }
 
+        public void FindReferencedModules()
+        {
+            _ReferencedModules.Clear();
+            FindNativeReferences();
+            if (IsManaged)
+                FindManagedReferences();
+        }
 
-                    // Check the PE signature.  Should equal 'PE\0\0'.
-                    fileStream.Position = peHeaderPointer;
-                    uint peHeaderSignature = binaryReader.ReadUInt32();
-                    if (peHeaderSignature != 0x00004550)
+        private void FindNativeReferences()
+        {
+            using (Stream fileStream = new FileStream(Location, FileMode.Open, FileAccess.Read))
+            {
+                var importTableInfo = PEHelper.GetImageDirectories(fileStream)[1];
+                var sections = PEHelper.GetImageSections(fileStream);
+                var importSection = sections.FirstOrDefault(s =>
+                s.VirtualAddress <= importTableInfo.VirtualAddress &&
+                s.VirtualAddress + s.SizeOfRawData > importTableInfo.VirtualAddress);
+
+                if (importSection.SizeOfRawData > 0)
+                {
+                    var dirOffset = importSection.PointerToRawData + (importTableInfo.VirtualAddress - importSection.VirtualAddress);
+                    fileStream.Seek(dirOffset, SeekOrigin.Begin);
+                    var binaryReader = new BinaryReader(fileStream);
+
+                    IMAGE_IMPORT_DIRECTORY moduleImportEntry;
+                    do
                     {
-                        return false;
+                        moduleImportEntry = fileStream.ReadStructure<IMAGE_IMPORT_DIRECTORY>();
+                        if (moduleImportEntry.ModuleName == 0)
+                            break;
+
+                        var currentStreamPos = fileStream.Position;
+                        var dirNameOffset = importSection.PointerToRawData + (moduleImportEntry.ModuleName - importSection.VirtualAddress);
+                        fileStream.Seek(dirNameOffset, SeekOrigin.Begin);
+
+                        var moduleName = binaryReader.ReadNullTerminatedString();
+                        _ReferencedModules.Add(new ModuleRef(ModuleType.Native, moduleName));
+
+                        fileStream.Position = currentStreamPos;
                     }
+                    while (true);
+                }
+               
+            }
+        }
 
-                    // skip over the PEHeader fields
-                    fileStream.Position += 20;
-
-                    const ushort PE32 = 0x10b;
-                    const ushort PE32Plus = 0x20b;
-
-                    // Read PE magic number from Standard Fields to determine format.
-                    var peFormat = binaryReader.ReadUInt16();
-                    if (peFormat != PE32 && peFormat != PE32Plus)
-                    {
-                        return false;
-                    }
-
-                    // Read the 15th Data Dictionary RVA field which contains the CLI header RVA.
-                    // When this is non-zero then the file contains CLI data otherwise not.
-                    ushort dataDictionaryStart = (ushort)(peHeaderPointer + (peFormat == PE32 ? 232 : 248));
-                    fileStream.Position = dataDictionaryStart;
-
-                    uint cliHeaderRva = binaryReader.ReadUInt32();
-                    if (cliHeaderRva == 0)
-                    {
-                        return false;
-                    }
-
-                    return true;
+        private void FindManagedReferences()
+        {
+            using (var tempAppDom = new TemporaryAppDomain(FileName))
+            {
+                var tmpAssembly = tempAppDom.LoadFrom(Location);
+                foreach (var assemName in tmpAssembly.GetReferencedAssemblies())
+                {
+                    _ReferencedModules.Add(new ModuleRef(ModuleType.Managed, assemName.Name));
                 }
             }
+        }
+
+        #endregion
+
+        public static ModuleInfo LoadReference(ModuleRef moduleRef)
+        {
+
+            return null;
         }
     }
 }

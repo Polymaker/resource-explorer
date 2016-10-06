@@ -49,6 +49,11 @@ namespace ResourceExplorer.ResourceAccess.Managed
             return Library.GetManifestResourceStream(resourceName);
         }
 
+        public AssemblyName[] GetReferencedAssemblies()
+        {
+            return Library.GetReferencedAssemblies();
+        }
+
         public ResourceManagerProxy GetResourceManager(string name)
         {
             return TemporaryAppDomain.CreateRefObject<ResourceManagerProxy>(AppDomain.CurrentDomain, name, Library);

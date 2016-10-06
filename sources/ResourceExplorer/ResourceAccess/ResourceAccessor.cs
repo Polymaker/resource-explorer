@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
@@ -165,6 +166,16 @@ namespace ResourceExplorer.ResourceAccess
             var resourceManager = GetResourceManager(resource);
 
             return TempAppDomain.ReleaseObject(resourceManager.GetObject(resource.Name), resource.SystemType);
+        }
+
+        public object GetObject(ManagedResourceInfo resource, CultureInfo culture)
+        {
+            if (!resource.IsFromDesigner)
+                return null;
+
+            var resourceManager = GetResourceManager(resource);
+
+            return TempAppDomain.ReleaseObject(resourceManager.GetObject(resource.Name, culture), resource.SystemType);
         }
 
         private ResourceManagerProxy GetResourceManager(ManagedResourceInfo managedResInfo)
