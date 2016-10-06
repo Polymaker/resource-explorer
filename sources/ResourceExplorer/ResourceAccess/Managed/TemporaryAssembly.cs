@@ -12,7 +12,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
 {
     public class TemporaryAssembly : MarshalByRefObject
     {
-        private readonly Assembly _Library;
+        private /*readonly*/ Assembly _Library;
 
         private Assembly Library
         {
@@ -34,9 +34,40 @@ namespace ResourceExplorer.ResourceAccess.Managed
             get { return Library.Location; }
         }
 
+        public TemporaryAssembly()
+        {
+            _Library = null;
+        }
+
         public TemporaryAssembly(string assemblyLocation)
         {
             _Library = Assembly.LoadFrom(assemblyLocation);
+        }
+
+        public bool LoadFrom(string assemblyLocation)
+        {
+            if (_Library == null)
+            {
+                try
+                {
+                    _Library = Assembly.LoadFrom(assemblyLocation);
+                }
+                catch { }
+            }
+            return _Library != null;
+        }
+
+        public bool Load(string assemblyString)
+        {
+            if (_Library == null)
+            {
+                try
+                {
+                    _Library = Assembly.Load(assemblyString);
+                }
+                catch { }
+            }
+            return _Library != null;
         }
 
         public string[] GetManifestResourceNames()

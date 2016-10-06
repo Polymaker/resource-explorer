@@ -28,7 +28,6 @@ namespace ResourceExplorer.Native.API
 
         #endregion
 
-
         #region Utility methods
 
         [HandleProcessCorruptedStateExceptions]

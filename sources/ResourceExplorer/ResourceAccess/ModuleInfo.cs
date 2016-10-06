@@ -10,6 +10,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace ResourceExplorer.ResourceAccess
@@ -18,9 +19,10 @@ namespace ResourceExplorer.ResourceAccess
     {
         private bool _ResourcesLoaded;
         private readonly string _FileName;
-        private /*readonly*/ string _Name;
+        private readonly string _Name;
         private readonly bool _IsManaged;
-        private bool _Is64Bit;
+        private readonly ProcessorArchitecture _Architecture;
+        private bool isPE64;
         private readonly string _Location;
         private readonly FileVersionInfo _VersionInfo;
         private List<ResourceInfo> _Resources;
@@ -56,9 +58,23 @@ namespace ResourceExplorer.ResourceAccess
 
         public bool Is64Bit
         {
-            get { return _Is64Bit; }
+            get
+            {
+                if (Architecture == ProcessorArchitecture.X86 || 
+                    Architecture == ProcessorArchitecture.None)//IDK when this could happen
+                    return false;
+                if (Architecture == ProcessorArchitecture.MSIL)
+                    return ResourceExplorer.Native.Utilities.Is64BitOperatingSystem;
+
+                return true;
+            }
         }
-        
+
+        public ProcessorArchitecture Architecture
+        {
+            get { return _Architecture; }
+        }
+
         public bool IsManaged
         {
             get { return _IsManaged; }
@@ -97,12 +113,26 @@ namespace ResourceExplorer.ResourceAccess
         public ModuleInfo(string location)
         {
             _Location = location;
-            if (!PEHelper.VerifyPEModule(location, out _IsManaged, out _Is64Bit))
-                throw new BadImageFormatException("");
 
-            _VersionInfo = FileVersionInfo.GetVersionInfo(location);
+            if (!PEHelper.VerifyPEModule(location, out _IsManaged, out isPE64))
+                throw new BadImageFormatException("Specified file is not a valid assembly.");
+
             _FileName = Path.GetFileName(location);
+            _VersionInfo = FileVersionInfo.GetVersionInfo(location);
+
             _Name = Path.GetFileNameWithoutExtension(FileName);
+
+            if (IsManaged)
+            {
+                var assemName = AssemblyName.GetAssemblyName(location);
+                _Architecture = assemName.ProcessorArchitecture;
+                _Name = assemName.Name;
+            }
+            else
+            {
+                _Architecture = isPE64 ? ProcessorArchitecture.Amd64 : ProcessorArchitecture.X86;
+            }
+            
             _ResourcesLoaded = false;
             _Resources = new List<ResourceInfo>();
             _SatelliteAssemblies = new List<SatelliteAssemblyInfo>();
@@ -156,7 +186,6 @@ namespace ResourceExplorer.ResourceAccess
             using (var tempAppDom = new TemporaryAppDomain(FileName))
             {
                 var tmpAssembly = tempAppDom.LoadFrom(Location);
-                _Name = tmpAssembly.Name;
                 var resourceNames = tmpAssembly.GetManifestResourceNames();
                 foreach (var resName in resourceNames)
                 {
@@ -260,12 +289,18 @@ namespace ResourceExplorer.ResourceAccess
 
         private void FindManagedReferences()
         {
+            var moduleDirectory = Path.GetDirectoryName(Location);
+            
             using (var tempAppDom = new TemporaryAppDomain(FileName))
             {
                 var tmpAssembly = tempAppDom.LoadFrom(Location);
+
                 foreach (var assemName in tmpAssembly.GetReferencedAssemblies())
                 {
-                    _ReferencedModules.Add(new ModuleRef(ModuleType.Managed, assemName.Name));
+                    _ReferencedModules.Add(new ModuleRef(assemName));
+                    var matchingFiles = Directory.EnumerateFiles(moduleDirectory, assemName.Name + ".*");
+                    if (matchingFiles.Any())
+                        _ReferencedModules.Last().Location = matchingFiles.First();
                 }
             }
         }
@@ -274,7 +309,22 @@ namespace ResourceExplorer.ResourceAccess
 
         public static ModuleInfo LoadReference(ModuleRef moduleRef)
         {
+            if (!string.IsNullOrEmpty(moduleRef.Location))
+                return new ModuleInfo(moduleRef.Location);
 
+            if (moduleRef.Type == ModuleType.Native)
+            {
+
+            }
+            else
+            {
+                using (var tempAppDom = new TemporaryAppDomain(moduleRef.ModuleName))
+                {
+                    var tmpAssembly = tempAppDom.Load(moduleRef.FullName);
+                    if (tmpAssembly != null)
+                        return new ModuleInfo(tmpAssembly.Location);
+                }
+            }
             return null;
         }
     }

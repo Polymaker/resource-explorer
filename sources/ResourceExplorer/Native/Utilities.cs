@@ -9,8 +9,41 @@ using ResourceExplorer.Utilities;
 
 namespace ResourceExplorer.Native
 {
+    //TODO: the class name clashes with the Utilities namespace, either rename this class or the Utilities namespace
     public static class Utilities
     {
+        private static int is64BitOS = -1;
+
+        public static bool Is64BitProcess
+        {
+            get { return IntPtr.Size == 8; }
+        }
+
+        public static bool Is64BitOperatingSystem
+        {
+            get { return Is64BitProcess || InternalCheckIsWow64(); }
+        }
+
+        private static bool InternalCheckIsWow64()
+        {
+            if (is64BitOS < 0)
+            {
+                is64BitOS = 1;
+                if ((Environment.OSVersion.Version.Major == 5 && Environment.OSVersion.Version.Minor >= 1) ||
+                    Environment.OSVersion.Version.Major >= 6)
+                {
+                    using (Process p = Process.GetCurrentProcess())
+                    {
+                        bool retVal = false;
+                        Kernel32.IsWow64Process(p.Handle, out retVal);
+                        is64BitOS = Convert.ToInt32(retVal);
+                        return retVal;
+                    }
+                }
+            }
+            return Convert.ToBoolean(is64BitOS);
+        }
+
         public static T[] MarshalDynamicArray<T>(IntPtr objectPtr, int offset, int itemCount)
         {
             return MarshalDynamicArray<T>(objectPtr, offset, itemCount, Marshal.SizeOf(typeof(T)));

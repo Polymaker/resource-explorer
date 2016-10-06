@@ -25,7 +25,7 @@ namespace ResourceExplorer
             var module = new ModuleInfo(@"D:\Development\github\ldd-modder\LDDModder\Application\bin\Debug\LDD Modder.exe");
 
             module.FindReferencedModules();
-
+            //ModuleInfo.LoadReference(module.ReferencedModules.First(m => m.Type == ModuleType.Managed));
             module.LoadResources();
             
             module.FindSatelliteAssemblies();

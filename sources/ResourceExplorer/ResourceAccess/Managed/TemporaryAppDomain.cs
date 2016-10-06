@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -79,7 +80,10 @@ namespace ResourceExplorer.ResourceAccess.Managed
             if (Domain != null)
             {
                 try { AppDomain.Unload(Domain); }
-                catch (AppDomainUnloadedException) { }
+                catch (AppDomainUnloadedException)
+                {
+                    Trace.WriteLine("It looks like an object obtained from a temporary AppDomain is still referenced in the main AppDomain.");
+                }
                 Domain = null;
             }
             GC.SuppressFinalize(this);
@@ -153,7 +157,25 @@ namespace ResourceExplorer.ResourceAccess.Managed
             if (_LoadedAssemblies.ContainsKey(assemFullname))
                 return _LoadedAssemblies[assemFullname];
 
-            var tmpAssembly = CreateRefObject<TemporaryAssembly>(assemblyFile);
+            var tmpAssembly = CreateRefObject<TemporaryAssembly>();
+
+            if (!tmpAssembly.LoadFrom(assemblyFile))
+                return null;
+
+            _LoadedAssemblies.TryAdd(tmpAssembly.FullName, tmpAssembly);
+            return tmpAssembly;
+        }
+
+        public TemporaryAssembly Load(string assemFullname)
+        {
+            if (_LoadedAssemblies.ContainsKey(assemFullname))
+                return _LoadedAssemblies[assemFullname];
+
+            var tmpAssembly = CreateRefObject<TemporaryAssembly>();
+
+            if (!tmpAssembly.Load(assemFullname))
+                return null;
+
             _LoadedAssemblies.TryAdd(tmpAssembly.FullName, tmpAssembly);
             return tmpAssembly;
         }

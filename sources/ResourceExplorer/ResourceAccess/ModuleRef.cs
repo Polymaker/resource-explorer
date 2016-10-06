@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 
 namespace ResourceExplorer.ResourceAccess
@@ -15,6 +16,10 @@ namespace ResourceExplorer.ResourceAccess
             get { return _ModuleName; }
         }
 
+        public string FullName { get; set; }
+
+        public string Location { get; set; }
+
         public ModuleType Type
         {
             get { return _Type; }
@@ -24,6 +29,13 @@ namespace ResourceExplorer.ResourceAccess
         {
             _Type = type;
             _ModuleName = moduleName;
+        }
+
+        public ModuleRef(AssemblyName assemName)
+        {
+            _Type = ModuleType.Managed;
+            _ModuleName = assemName.Name;
+            FullName = assemName.FullName;
         }
     }
 }
