@@ -52,11 +52,7 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
-    <Compile Include="Native\COM\ExtractIconpwFlags.cs" />
-    <Compile Include="Native\COM\ExtractIconuFlags.cs" />
-    <Compile Include="Native\COM\IExtractIcon.cs" />
     <Compile Include="Native\Enums\SFGAOF.cs" />
-    <Compile Include="Native\COM\IClassFactory.cs" />
     <Compile Include="Native\PEHelper.cs" />
     <Compile Include="Native\PE\DataSectionFlags.cs" />
     <Compile Include="Native\PE\IMAGE_DATA_DIRECTORY.cs" />
@@ -67,19 +63,9 @@
     <Compile Include="Native\PE\IMAGE_OPTIONAL_HEADER32.cs" />
     <Compile Include="Native\PE\IMAGE_OPTIONAL_HEADER64.cs" />
     <Compile Include="Native\PE\IMAGE_SECTION_HEADER.cs" />
-    <Compile Include="Native\Types\ITEMIDLIST.cs" />
     <Compile Include="Native\API\Kernel32.cs" />
     <Compile Include="Native\API\Ntdll.cs" />
-    <Compile Include="Native\API\Shell32.cs" />
-    <Compile Include="Native\Types\SHITEMID.cs" />
     <Compile Include="Native\API\User32.cs" />
-    <Compile Include="Native\ComHelper.cs" />
-    <Compile Include="Native\COM\ESFGAO.cs" />
-    <Compile Include="Native\COM\ESHCONTF.cs" />
-    <Compile Include="Native\COM\ESHGDN.cs" />
-    <Compile Include="Native\COM\ESTRRET.cs" />
-    <Compile Include="Native\COM\IShellFolder.cs" />
-    <Compile Include="Native\COM\STRRET.cs" />
     <Compile Include="Native\Enums\ACCESS_MASK.cs" />
     <Compile Include="Native\Enums\ResourceType.cs" />
     <Compile Include="Native\SafeProcessHandle.cs" />
@@ -108,7 +94,6 @@
     <Compile Include="ResourceAccess\Native\NativeResourceType.cs" />
     <Compile Include="ResourceAccess\ResourceAccessor.cs" />
     <Compile Include="ResourceAccess\ResourceInfo.cs" />
-    <Compile Include="ResourceAccess\FileIconHelper.cs" />
     <Compile Include="Utilities\ExtensionMethods\StreamExtensions.cs" />
     <Compile Include="Utilities\ExtensionMethods\StringExtensions.cs" />
     <Compile Include="Utilities\PathUtils.cs" />

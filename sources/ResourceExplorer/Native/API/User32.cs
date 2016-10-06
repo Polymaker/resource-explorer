@@ -39,7 +39,7 @@ namespace ResourceExplorer.Native.API
                 IntPtr bmpHandle = User32.LoadBitmap(hInstance, resourceId);
                 return Bitmap.FromHbitmap(bmpHandle);
             }
-            catch(System.AccessViolationException ex)
+            catch(AccessViolationException)
             {
                 return null;
             }

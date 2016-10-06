@@ -79,7 +79,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
             if (Domain != null)
             {
                 try { AppDomain.Unload(Domain); }
-                catch (AppDomainUnloadedException adue) { }
+                catch (AppDomainUnloadedException) { }
                 Domain = null;
             }
             GC.SuppressFinalize(this);
