@@ -35,6 +35,13 @@ namespace ResourceExplorer.ResourceAccess.Managed
                 catch { image.Save(ms, ImageFormat.Bmp); }
                 return ms;
             }
+            else if (typeof(Icon).IsAssignableFrom(objectType))
+            {
+                var ms = new MemoryStream();
+                var icon = (Icon)value;
+                icon.Save(ms);
+                return ms;
+            }
             else if (typeof(ISerializable).IsAssignableFrom(objectType) ||
                 objectType.GetCustomAttributes(typeof(SerializableAttribute), false).Length > 0)
             {
@@ -45,9 +52,9 @@ namespace ResourceExplorer.ResourceAccess.Managed
                     binaryFormatter.Serialize(ms, value);
                     return ms;
                 }
-                catch
+                catch(Exception ex)
                 {
-                    Trace.WriteLine("Could not serialize object to stream");
+                    Trace.WriteLine("Could not serialize object to stream:\r\n" + ex.ToString());
                 }
             }
 

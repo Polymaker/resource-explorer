@@ -31,14 +31,24 @@ namespace ResourceExplorer.ResourceAccess.Managed
         {
             get { return _ResourceManagerName; }
         }
-        
+
+        public ResourceManagerInfo ResourceManager
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(ResourceManagerName))
+                    return null;
+                return Module.Resources.OfType<ResourceManagerInfo>().FirstOrDefault(r => r.Name == ResourceManagerName);
+            }
+        }
+
         /// <summary>
         /// AKA a ResourceManager entry
         /// </summary>
-        public bool IsFromDesigner
+        public bool IsResourceEntry
         {
             //get { return ResourceManagerName.Length > 0; }
-            get { return Kind == ManagedResourceType.Designer; }
+            get { return Kind == ManagedResourceType.ResourceEntry; }
         }
 
         public bool IsResourceManager

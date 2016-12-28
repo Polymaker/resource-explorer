@@ -81,7 +81,6 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
         #endregion
 
-
         ~ResourceManagerProxy()
         {
             Dispose();

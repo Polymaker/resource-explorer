@@ -197,6 +197,8 @@ namespace ResourceExplorer.ResourceAccess.Managed
                 if (objectStream == null)
                     return null;
 
+                objectStream.Seek(0, SeekOrigin.Begin);
+
                 if (typeof(Stream).IsAssignableFrom(objectType))
                 {
                     var ms = new MemoryStream();

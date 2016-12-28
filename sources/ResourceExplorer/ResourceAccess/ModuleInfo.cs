@@ -15,7 +15,7 @@ using System.Text;
 
 namespace ResourceExplorer.ResourceAccess
 {
-    public class ModuleInfo
+    public class ModuleInfo : IDisposable
     {
         private bool _ResourcesLoaded;
         private readonly string _FileName;
@@ -98,6 +98,16 @@ namespace ResourceExplorer.ResourceAccess
         public IList<ResourceInfo> Resources
         {
             get { return _Resources.AsReadOnly(); }
+        }
+
+        public IEnumerable<ManagedResourceInfo> ManagedResources
+        {
+            get { return Resources.OfType<ManagedResourceInfo>(); }
+        }
+
+        public IEnumerable<NativeResourceInfo> NativeResources
+        {
+            get { return Resources.OfType<NativeResourceInfo>(); }
         }
 
         public IList<CultureInfo> Cultures
@@ -186,17 +196,21 @@ namespace ResourceExplorer.ResourceAccess
             using (var tempAppDom = new TemporaryAppDomain(FileName))
             {
                 var tmpAssembly = tempAppDom.LoadFrom(Location);
+                if (tmpAssembly == null)
+                    return;
                 var resourceNames = tmpAssembly.GetManifestResourceNames();
                 foreach (var resName in resourceNames)
                 {
                     if (resName.EndsWith(".resources"))
                     {
-                        var resManager = tmpAssembly.GetResourceManager(resName);
-                        _Resources.Add(new ManagedResourceInfo(this, ManagedResourceType.ResourceManager, resName, typeof(System.Resources.ResourceManager)));
-
-                        foreach (var resourceEntry in resManager.Resources)
+                        using (var resManager = tmpAssembly.GetResourceManager(resName))
                         {
-                            _Resources.Add(new ManagedResourceInfo(this, ManagedResourceType.Designer, resourceEntry.Key, resourceEntry.Value, resName));
+                            _Resources.Add(new ResourceManagerInfo(this, resName, tmpAssembly.GetResourceManagerType(resName)));
+
+                            foreach (var resourceEntry in resManager.Resources)
+                            {
+                                _Resources.Add(new ManagedResourceInfo(this, ManagedResourceType.ResourceEntry, resourceEntry.Key, resourceEntry.Value, resName));
+                            }
                         }
                     }
                     else
@@ -225,10 +239,8 @@ namespace ResourceExplorer.ResourceAccess
 
             var moduleDirectory = new DirectoryInfo(Path.GetDirectoryName(Location));
 
-            foreach (var resourceDllFile in moduleDirectory.EnumerateFiles(Name + ".resources.dll", SearchOption.AllDirectories))
+            foreach (var resourceDllFile in moduleDirectory.SafeEnumerateFiles(Name + ".resources.dll", 1))
             {
-                if (!PathUtils.AreEqual(resourceDllFile.Directory.Parent, moduleDirectory))//only level 1 subdir
-                    continue;
                 try
                 {
                     var culture = CultureInfo.GetCultureInfo(resourceDllFile.Directory.Name);
@@ -251,7 +263,7 @@ namespace ResourceExplorer.ResourceAccess
 
         private void FindNativeReferences()
         {
-            using (Stream fileStream = new FileStream(Location, FileMode.Open, FileAccess.Read))
+            using (Stream fileStream = new FileStream(Location, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 var importTableInfo = PEHelper.GetImageDirectories(fileStream)[1];
                 var sections = PEHelper.GetImageSections(fileStream);
@@ -294,6 +306,8 @@ namespace ResourceExplorer.ResourceAccess
             using (var tempAppDom = new TemporaryAppDomain(FileName))
             {
                 var tmpAssembly = tempAppDom.LoadFrom(Location);
+                if (tmpAssembly == null)
+                    return;
 
                 foreach (var assemName in tmpAssembly.GetReferencedAssemblies())
                 {
@@ -326,6 +340,52 @@ namespace ResourceExplorer.ResourceAccess
                 }
             }
             return null;
+        }
+
+        public static bool CanOpen(string executableLocation)
+        {
+            bool is64Bit, isManaged;
+
+            if (!PEHelper.VerifyPEModule(executableLocation, out isManaged, out is64Bit))
+                return false;
+
+            if (is64Bit && !ResourceExplorer.Native.Utilities.Is64BitOperatingSystem)
+                return false;
+
+            if (isManaged)
+            {
+                //From my experience, is64Bit will only be set on managed assemblies when they're built explicitly for 64-bit.
+                //So to check wheter or not we can load a managed assembly, we must check the .Net ProcessorArchitecture.
+                //An assembly built for Any CPU (MSIL) can be loaded in a process built for any architecture (x86/x64/MSIL).
+                //The only exception is that a 32-bit process cannot load an assembly explicitly built for 64-bit and vice-versa.
+
+                var targetAssemName = AssemblyName.GetAssemblyName(executableLocation);
+                if (targetAssemName == null || targetAssemName.ProcessorArchitecture == ProcessorArchitecture.None)
+                    return false;
+
+                var currentArchitecture = Assembly.GetExecutingAssembly().GetName().ProcessorArchitecture;
+                var targetArchitecture = targetAssemName.ProcessorArchitecture;
+
+                if (targetArchitecture == ProcessorArchitecture.X86)
+                    return currentArchitecture == ProcessorArchitecture.X86;
+                else //(MSIL || Amd64 || IA64 (I don't know what this is))
+                    return targetArchitecture != ProcessorArchitecture.X86;
+            }
+
+            return true;//a 32-bit process can read an unmanaged 64-bit executable
+        }
+
+        public void Dispose()
+        {
+            _Resources.Clear();
+            _SatelliteAssemblies.Clear();
+            _ReferencedModules.Clear();
+            GC.SuppressFinalize(this);
+        }
+
+        ~ModuleInfo()
+        {
+            Dispose();
         }
     }
 }

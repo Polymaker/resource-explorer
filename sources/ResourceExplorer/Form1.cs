@@ -22,7 +22,12 @@ namespace ResourceExplorer
         {
             //"C:\Windows\System32\user32.dll"
             //"D:\Development\github\ldd-modder\LDDModder\Application\bin\Debug\LDD Modder.exe"
-            var module = new ModuleInfo(@"D:\Development\github\ldd-modder\LDDModder\Application\bin\Debug\LDD Modder.exe");
+            string executable = @"E:\ResourceExplorer.exe";
+            if (!ModuleInfo.CanOpen(executable))
+            {
+                return;
+            }
+            var module = new ModuleInfo(executable);
 
             module.FindReferencedModules();
             //ModuleInfo.LoadReference(module.ReferencedModules.First(m => m.Type == ModuleType.Managed));
@@ -39,8 +44,12 @@ namespace ResourceExplorer
                 {
                     var lvi = new ListViewItem(managedRes.Name);
                     lvi.SubItems.Add(managedRes.Kind.ToString());
-                    lvi.SubItems.Add(managedRes.SystemType.Name);
-                    if (managedRes.IsFromDesigner)
+                    if (managedRes is ResourceManagerInfo)
+                        lvi.SubItems.Add(((ResourceManagerInfo)managedRes).DesignerType.ToString());
+                    else
+                        lvi.SubItems.Add(managedRes.SystemType.Name);
+
+                    if (managedRes.IsResourceEntry)
                     {
                         var typeConv = TypeDescriptor.GetConverter(managedRes.SystemType);
                         if (typeConv != null && typeConv.CanConvertTo(typeof(string)))
@@ -59,6 +68,12 @@ namespace ResourceExplorer
                 //    resourceImage = accessor.GetImage(myRes);
                 //}
             }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            listView1.Items.Clear();
+            GC.Collect();
         }
     }
 }

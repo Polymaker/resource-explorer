@@ -8,7 +8,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
     public enum ManagedResourceType
     {
         Embedded,
-        Designer,
+        ResourceEntry,
         ResourceManager,
         //this type will be used for resources (file handles) locked when analysing resources from a running process (if I code that...)
         Content

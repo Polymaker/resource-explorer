@@ -72,7 +72,7 @@ namespace ResourceExplorer.ResourceAccess
 
                 Stream resourceStream = null;
 
-                if (managedResource.IsFromDesigner)
+                if (managedResource.IsResourceEntry)
                 {
                     var resourceManager = GetResourceManager(managedResource);
                     if (typeof(Stream).IsAssignableFrom(managedResource.SystemType))
@@ -111,7 +111,7 @@ namespace ResourceExplorer.ResourceAccess
                 if (!typeof(Image).IsAssignableFrom(managedResource.SystemType))
                     return null;
 
-                if (managedResource.IsFromDesigner)
+                if (managedResource.IsResourceEntry)
                 {
                     var resourceManager = GetResourceManager(managedResource);
                     var proxyImage = resourceManager.GetObject(managedResource.Name) as Image;
@@ -145,14 +145,14 @@ namespace ResourceExplorer.ResourceAccess
                 if (!typeof(Icon).IsAssignableFrom(managedResource.SystemType))
                     return null;
 
-                if (managedResource.IsFromDesigner)
+                if (managedResource.IsResourceEntry)
                 {
                     var resourceManager = GetResourceManager(managedResource);
                     var proxyIcon = resourceManager.GetObject(managedResource.Name) as Icon;
                     return TempAppDomain.ReleaseObject(proxyIcon);
                 }
 
-                //Embedded resources are always stored as stream, and we can't know for sure of a stream is an image
+                //Embedded resources are always stored as stream, and we can't know for sure if a stream is an image
             }
 
             return null;
@@ -160,7 +160,7 @@ namespace ResourceExplorer.ResourceAccess
 
         public object GetObject(ManagedResourceInfo resource)
         {
-            if (!resource.IsFromDesigner)
+            if (!resource.IsResourceEntry)
                 return null;
 
             var resourceManager = GetResourceManager(resource);
@@ -170,7 +170,7 @@ namespace ResourceExplorer.ResourceAccess
 
         public object GetObject(ManagedResourceInfo resource, CultureInfo culture)
         {
-            if (!resource.IsFromDesigner)
+            if (!resource.IsResourceEntry)
                 return null;
 
             var resourceManager = GetResourceManager(resource);

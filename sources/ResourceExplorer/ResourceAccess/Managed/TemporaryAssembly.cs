@@ -21,17 +21,17 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
         public string Name
         {
-            get { return Library.GetName().Name; }
+            get { return _Library != null ? Library.GetName().Name : string.Empty; }
         }
 
         public string FullName
         {
-            get { return Library.FullName; }
+            get { return _Library != null ? Library.FullName : string.Empty; }
         }
 
         public string Location
         {
-            get { return Library.Location; }
+            get { return _Library != null ? Library.Location : string.Empty; }
         }
 
         public TemporaryAssembly()
@@ -52,7 +52,10 @@ namespace ResourceExplorer.ResourceAccess.Managed
                 {
                     _Library = Assembly.LoadFrom(assemblyLocation);
                 }
-                catch { }
+                catch (Exception ex)
+                {
+
+                }
             }
             return _Library != null;
         }
@@ -65,7 +68,10 @@ namespace ResourceExplorer.ResourceAccess.Managed
                 {
                     _Library = Assembly.Load(assemblyString);
                 }
-                catch { }
+                catch(Exception ex)
+                {
+                    
+                }
             }
             return _Library != null;
         }
@@ -73,6 +79,28 @@ namespace ResourceExplorer.ResourceAccess.Managed
         public string[] GetManifestResourceNames()
         {
             return Library.GetManifestResourceNames();
+        }
+
+        public Type GetType(string typeName)
+        {
+            return Library.GetType(typeName);
+        }
+
+        public bool ContainsType(string typeName)
+        {
+            return Library.GetType(typeName) != null;
+        }
+
+        public bool TypeIsForm(string typeName)
+        {
+            var type = Library.GetType(typeName);
+            return type != null && typeof(System.Windows.Forms.Form).IsAssignableFrom(type);
+        }
+
+        public bool TypeIsControl(string typeName)
+        {
+            var type = Library.GetType(typeName);
+            return type != null && typeof(System.Windows.Forms.Control).IsAssignableFrom(type);
         }
 
         public Stream GetManifestResourceStream(string resourceName)
@@ -88,6 +116,36 @@ namespace ResourceExplorer.ResourceAccess.Managed
         public ResourceManagerProxy GetResourceManager(string name)
         {
             return TemporaryAppDomain.CreateRefObject<ResourceManagerProxy>(AppDomain.CurrentDomain, name, Library);
+        }
+
+        public ResourceManagerType GetResourceManagerType(string resourceManagerName)
+        {
+            var className = resourceManagerName.Substring(0, resourceManagerName.Length - 10); //strip .resources
+            var classInfo = Library.GetType(className);
+            if (classInfo == null)
+            {
+                var classNameOnly = className;
+                if (className.IndexOf('.') > 0)
+                    classNameOnly = className.Substring(className.LastIndexOf('.') + 1);
+                classInfo = Library.GetTypes().FirstOrDefault(t => t.Name.Contains(classNameOnly));
+            }
+            if (classInfo != null)
+            {
+                if (typeof(System.Windows.Forms.Form).IsAssignableFrom(classInfo))
+                    return ResourceManagerType.Form;
+                else if (typeof(System.Windows.Forms.Control).IsAssignableFrom(classInfo))
+                    return ResourceManagerType.Control;
+                else if (typeof(System.ComponentModel.Component).IsAssignableFrom(classInfo))
+                    return ResourceManagerType.Component;
+            }
+            if (className.EndsWith(".Resources"))
+                return ResourceManagerType.Project;
+            return ResourceManagerType.Other;
+        }
+
+        public override string ToString()
+        {
+            return _Library != null ? Name : "Invalid Module";
         }
     }
 }
