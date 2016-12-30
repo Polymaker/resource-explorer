@@ -36,6 +36,18 @@ namespace ResourceExplorer.ResourceAccess
             _Type = ModuleType.Managed;
             _ModuleName = assemName.Name;
             FullName = assemName.FullName;
+            Location = assemName.CodeBase;
+        }
+
+        public bool IsSystemModule()
+        {
+            if (Location != null)
+            {
+                if (Location.Contains(Environment.GetFolderPath(Environment.SpecialFolder.System))
+                    || Location.Contains(Environment.GetFolderPath(Environment.SpecialFolder.SystemX86)))
+                    return true;
+            }
+            return false;
         }
     }
 }

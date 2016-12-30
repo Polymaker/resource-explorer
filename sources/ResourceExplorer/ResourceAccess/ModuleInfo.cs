@@ -28,6 +28,7 @@ namespace ResourceExplorer.ResourceAccess
         private List<ResourceInfo> _Resources;
         private List<SatelliteAssemblyInfo> _SatelliteAssemblies;
         private List<ModuleRef> _ReferencedModules;
+        private string _DefaultNamespace;
 
         #region Properties
 
@@ -78,6 +79,11 @@ namespace ResourceExplorer.ResourceAccess
         public bool IsManaged
         {
             get { return _IsManaged; }
+        }
+
+        public string DefaultNamespace
+        {
+            get { return _DefaultNamespace; }
         }
 
         public bool ResourcesLoaded
@@ -131,6 +137,7 @@ namespace ResourceExplorer.ResourceAccess
             _VersionInfo = FileVersionInfo.GetVersionInfo(location);
 
             _Name = Path.GetFileNameWithoutExtension(FileName);
+            _DefaultNamespace = string.Empty;
 
             if (IsManaged)
             {
@@ -196,8 +203,11 @@ namespace ResourceExplorer.ResourceAccess
             using (var tempAppDom = new TemporaryAppDomain(FileName))
             {
                 var tmpAssembly = tempAppDom.LoadFrom(Location);
+                
                 if (tmpAssembly == null)
                     return;
+
+                _DefaultNamespace = tmpAssembly.FindDefaultNamespace();
                 var resourceNames = tmpAssembly.GetManifestResourceNames();
                 foreach (var resName in resourceNames)
                 {
@@ -289,7 +299,10 @@ namespace ResourceExplorer.ResourceAccess
                         fileStream.Seek(dirNameOffset, SeekOrigin.Begin);
 
                         var moduleName = binaryReader.ReadNullTerminatedString();
-                        _ReferencedModules.Add(new ModuleRef(ModuleType.Native, moduleName));
+                        _ReferencedModules.Add(new ModuleRef(ModuleType.Native, moduleName)
+                        {
+                            Location = FindModuleLocation(Path.GetDirectoryName(Location), moduleName)
+                        });
 
                         fileStream.Position = currentStreamPos;
                     }
@@ -311,12 +324,20 @@ namespace ResourceExplorer.ResourceAccess
 
                 foreach (var assemName in tmpAssembly.GetReferencedAssemblies())
                 {
-                    _ReferencedModules.Add(new ModuleRef(assemName));
-                    var matchingFiles = Directory.EnumerateFiles(moduleDirectory, assemName.Name + ".*");
-                    if (matchingFiles.Any())
-                        _ReferencedModules.Last().Location = matchingFiles.First();
+                    _ReferencedModules.Add(new ModuleRef(assemName)
+                    {
+                        Location = FindModuleLocation(moduleDirectory, assemName.Name)
+                    });
                 }
             }
+        }
+
+        private string FindModuleLocation(string lookupDirectory, string moduleName)
+        {
+            var matchingFiles = Directory.EnumerateFiles(lookupDirectory, moduleName + ".*");
+            if (matchingFiles.Any())
+                return matchingFiles.First();
+            return null;
         }
 
         #endregion
@@ -341,7 +362,13 @@ namespace ResourceExplorer.ResourceAccess
             }
             return null;
         }
-
+        //TODO: combine IsValid and CanOpen to return detailed information (eg: reason why it cannot be opened)
+        public static bool IsValid(string executableLocation)
+        {
+            bool is64Bit, isManaged;
+            return PEHelper.VerifyPEModule(executableLocation, out isManaged, out is64Bit);
+        }
+        //TODO: combine IsValid and CanOpen to return detailed information (eg: reason why it cannot be opened)
         public static bool CanOpen(string executableLocation)
         {
             bool is64Bit, isManaged;

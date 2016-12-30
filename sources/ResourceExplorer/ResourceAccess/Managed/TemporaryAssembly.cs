@@ -1,6 +1,7 @@
 ﻿using ResourceExplorer.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -54,7 +55,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
                 }
                 catch (Exception ex)
                 {
-
+                    Trace.WriteLine(string.Format("Couldn't load assembly '{0}':\r\n\t{1}", assemblyLocation, ex));
                 }
             }
             return _Library != null;
@@ -70,7 +71,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
                 }
                 catch(Exception ex)
                 {
-                    
+                    Trace.WriteLine(string.Format("Couldn't load assembly '{0}':\r\n\t{1}", assemblyString, ex));
                 }
             }
             return _Library != null;
@@ -79,6 +80,31 @@ namespace ResourceExplorer.ResourceAccess.Managed
         public string[] GetManifestResourceNames()
         {
             return Library.GetManifestResourceNames();
+        }
+
+        public string FindDefaultNamespace()
+        {
+            var refCount = new Dictionary<string, int>();
+            var libTypes = Library.GetTypes();
+            //if(libTypes.Any(t=>t.Name == "MyApplication" || t.Name == "Application"))
+
+            foreach (var libType in libTypes)
+            {
+                var typeNamespace = libType.Namespace+".";
+                var dotCount = typeNamespace.Count(c => c == '.');
+                
+                for (int i = 1; i <= dotCount; i++)
+                {
+                    var namespaceSegment = typeNamespace.Substring(0, typeNamespace.IndexOfOccurrence('.', i));
+                    if (!refCount.ContainsKey(namespaceSegment))
+                        refCount.Add(namespaceSegment, 1);
+                    else
+                        refCount[namespaceSegment]++;
+                }
+            }
+            var commonName = refCount.OrderByDescending(kv => kv.Value).First().Key;
+
+            return commonName;
         }
 
         public Type GetType(string typeName)
