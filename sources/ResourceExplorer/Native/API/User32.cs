@@ -26,6 +26,9 @@ namespace ResourceExplorer.Native.API
         [DllImport("user32.dll")]
         public static extern IntPtr LoadIcon(IntPtr hInstance, uint resourceId);
 
+        [DllImport("user32.dll")]
+        public static extern IntPtr LoadCursor(IntPtr hInstance, uint lpCursorName);
+
         #endregion
 
         #region Utility methods
@@ -47,6 +50,24 @@ namespace ResourceExplorer.Native.API
         public static Icon GetResourceIcon(IntPtr hInstance, uint resourceId)
         {
             IntPtr iconHandle = User32.LoadIcon(hInstance, resourceId);
+            if (iconHandle == IntPtr.Zero)
+                return null;
+            return Icon.FromHandle(iconHandle);
+        }
+
+        public static Icon GetResourceIcon(IntPtr hInstance, string lpIconName)
+        {
+            IntPtr iconHandle = User32.LoadIcon(hInstance, lpIconName);
+            if (iconHandle == IntPtr.Zero)
+                return null;
+            return Icon.FromHandle(iconHandle);
+        }
+
+        public static Icon GetResourceCursor(IntPtr hInstance, uint lpCursorName)
+        {
+            IntPtr iconHandle = User32.LoadCursor(hInstance, lpCursorName);
+            if (iconHandle == IntPtr.Zero)
+                return null;
             return Icon.FromHandle(iconHandle);
         }
 

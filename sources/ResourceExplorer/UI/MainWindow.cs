@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -109,7 +110,18 @@ namespace ResourceExplorer.UI
                 {
                     var moduleNode = (ModuleRefNode)treeViewResources.SelectedObjects[0];
                     loadModuleToolStripMenuItem.Enabled = !string.IsNullOrEmpty(moduleNode.Module.Location);
-                    ShowTreeViewMenu(TreeViewMenuOption.LoadModule | TreeViewMenuOption.OpenLocation);
+                    ShowTreeViewMenu(TreeViewMenuOption.LoadModule | TreeViewMenuOption.OpenLocation,
+                        string.IsNullOrEmpty(moduleNode.Module.Location) ? TreeViewMenuOption.LoadModule | TreeViewMenuOption.OpenLocation : TreeViewMenuOption.None);
+                }
+                else if (treeViewResources.SelectedObjects[0] is ResourceNode)
+                {
+                    var resourceNode = (ResourceNode)treeViewResources.SelectedObjects[0];
+                    if(resourceNode.CanExport())
+                        ShowTreeViewMenu(TreeViewMenuOption.ExportResource);
+                }
+                else if (treeViewResources.SelectedObjects[0] is ModuleNode)
+                {
+                    ShowTreeViewMenu(TreeViewMenuOption.RemoveModule);
                 }
             }
             else if (treeViewResources.SelectedObjects.Count > 1)
@@ -140,24 +152,11 @@ namespace ResourceExplorer.UI
         private enum TreeViewMenuOption
         {
             None = 0,
-            LoadModule,
-            RemoveModule,
-            ExportResource,
-            OpenLocation,
+            LoadModule = 1,
+            RemoveModule = 2,
+            ExportResource = 4,
+            OpenLocation = 8,
             All = LoadModule | RemoveModule | ExportResource | OpenLocation
-        }
-
-        private void loadModuleToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (treeViewResources.SelectedObjects.Count == 1
-                && treeViewResources.SelectedObjects[0] is ModuleRefNode)
-            {
-                var moduleNode = (ModuleRefNode)treeViewResources.SelectedObjects[0];
-                if (!String.IsNullOrEmpty(moduleNode.Module.Location))
-                {
-                    AddModuleResources(new ModuleInfo(moduleNode.Module.Location));
-                }
-            }
         }
 
         private void ShowTreeViewMenu(TreeViewMenuOption visibleOptions, TreeViewMenuOption disabledOptions = TreeViewMenuOption.None)
@@ -176,6 +175,32 @@ namespace ResourceExplorer.UI
 
             treeViewMenu.Show(treeViewResources, treeViewResources.PointToClient(Cursor.Position));
 
+        }
+
+        private void loadModuleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (treeViewResources.SelectedObjects.Count == 1
+                && treeViewResources.SelectedObjects[0] is ModuleRefNode)
+            {
+                var moduleNode = (ModuleRefNode)treeViewResources.SelectedObjects[0];
+                if (!String.IsNullOrEmpty(moduleNode.Module.Location))
+                {
+                    AddModuleResources(new ModuleInfo(moduleNode.Module.Location));
+                }
+            }
+        }
+
+        private void openFileLocationToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (treeViewResources.SelectedObjects.Count == 1
+                && treeViewResources.SelectedObjects[0] is ModuleRefNode)
+            {
+                var moduleNode = (ModuleRefNode)treeViewResources.SelectedObjects[0];
+                if (!String.IsNullOrEmpty(moduleNode.Module.Location) && File.Exists(moduleNode.Module.Location))
+                {
+                    Process.Start("explorer.exe", "/select, \"" + moduleNode.Module.Location + "\"");
+                }
+            }
         }
 
         #endregion
@@ -378,12 +403,47 @@ namespace ResourceExplorer.UI
                         .OrderBy(x => x.Text).ToArray());
                 return base.FetchChildrens();
             }
+            public bool CanExport()
+            {
+                if (Resource.IsNative)
+                    return true;
+                else
+                {
+                    var manRes = (ManagedResourceInfo)Resource;
+                    return manRes.Kind != ManagedResourceType.ResourceManager;
+                }
+            }
         }
 
-        #endregion
+
 
         #endregion
 
-        
+        #endregion
+
+        private void exportToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (treeViewResources.SelectedObjects.Count == 1
+                && treeViewResources.SelectedObjects[0] is ResourceNode)
+            {
+                var resourceNode = (ResourceNode)treeViewResources.SelectedObjects[0];
+                if (resourceNode.Resource.ContentType == ContentType.Image)
+                {
+                    using (var resAccess = resourceNode.Resource.Module.GetAccessor())
+                        pictureBox1.Image = resAccess.GetImage(resourceNode.Resource);
+                }
+                else if (resourceNode.Resource.ContentType == ContentType.Icon)
+                {
+                    using (var resAccess = resourceNode.Resource.Module.GetAccessor())
+                    {
+                        var icon = resAccess.GetIcon(resourceNode.Resource);
+                        if (icon != null)
+                            pictureBox1.Image = icon.ToBitmap();
+                        else
+                            pictureBox1.Image = null;
+                    }
+                }
+            }
+        }
     }
 }

@@ -11,6 +11,7 @@ namespace ResourceExplorer.ResourceAccess.Native
         // Fields...
         private readonly uint _Id;
         private readonly NativeResourceType _Kind;
+        private readonly ContentType _ContentType;
 
         public NativeResourceType Kind
         {
@@ -27,11 +28,30 @@ namespace ResourceExplorer.ResourceAccess.Native
             get { return true; }
         }
 
+        public override ContentType ContentType { get { return _ContentType; } }
+
         public NativeResourceInfo(ModuleInfo module, NativeResourceType kind, uint id, string name)
             : base(module, name)
         {
             _Kind = kind;
             _Id = id;
+            switch (kind)
+            {
+                case NativeResourceType.Icon:
+                case NativeResourceType.IconGroup:
+                case NativeResourceType.Cursor:
+                case NativeResourceType.CursorGroup:
+                case NativeResourceType.AnimatedCursor:
+                case NativeResourceType.AnimatedIcon:
+                    _ContentType = ContentType.Icon;
+                    break;
+                case NativeResourceType.Bitmap:
+                    _ContentType = ContentType.Image;
+                    break;
+                default:
+                    _ContentType = ContentType.Unknown;
+                    break;
+            }
         }
 
         internal IntPtr GetHandle(IntPtr moduleHandle)

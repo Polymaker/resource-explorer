@@ -103,6 +103,7 @@
             // 
             this.treeViewResources.AllColumns.Add(this.olvColumn1);
             this.treeViewResources.AllColumns.Add(this.olvColumn2);
+            this.treeViewResources.CellEditUseWholeCell = false;
             this.treeViewResources.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
             this.olvColumn1,
             this.olvColumn2});
@@ -110,7 +111,6 @@
             this.treeViewResources.HideSelection = false;
             this.treeViewResources.Location = new System.Drawing.Point(0, 0);
             this.treeViewResources.Name = "treeViewResources";
-            this.treeViewResources.OwnerDraw = true;
             this.treeViewResources.ShowGroups = false;
             this.treeViewResources.Size = new System.Drawing.Size(354, 360);
             this.treeViewResources.SmallImageList = this.treeImageList;
@@ -140,11 +140,12 @@
             // 
             // pictureBox1
             // 
-            this.pictureBox1.Location = new System.Drawing.Point(26, 25);
+            this.pictureBox1.Location = new System.Drawing.Point(43, 25);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(173, 149);
             this.pictureBox1.TabIndex = 0;
             this.pictureBox1.TabStop = false;
+            this.pictureBox1.WaitOnLoad = true;
             // 
             // menuStrip1
             // 
@@ -208,6 +209,7 @@
             this.openFileLocationToolStripMenuItem.Name = "openFileLocationToolStripMenuItem";
             this.openFileLocationToolStripMenuItem.Size = new System.Drawing.Size(168, 22);
             this.openFileLocationToolStripMenuItem.Text = "Open file location";
+            this.openFileLocationToolStripMenuItem.Click += new System.EventHandler(this.openFileLocationToolStripMenuItem_Click);
             // 
             // removeToolStripMenuItem
             // 
@@ -220,6 +222,7 @@
             this.exportToolStripMenuItem.Name = "exportToolStripMenuItem";
             this.exportToolStripMenuItem.Size = new System.Drawing.Size(168, 22);
             this.exportToolStripMenuItem.Text = "Export resource...";
+            this.exportToolStripMenuItem.Click += new System.EventHandler(this.exportToolStripMenuItem_Click);
             // 
             // MainWindow
             // 

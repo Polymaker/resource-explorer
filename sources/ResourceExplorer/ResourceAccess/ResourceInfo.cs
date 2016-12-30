@@ -24,6 +24,8 @@ namespace ResourceExplorer.ResourceAccess
 
         public /*virtual*/ bool IsManaged { get { return !IsNative; } }
 
+        public abstract ContentType ContentType { get; }
+
         public ResourceInfo(ModuleInfo module, string name)
         {
             _Module = module;

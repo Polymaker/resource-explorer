@@ -133,10 +133,22 @@ namespace ResourceExplorer.ResourceAccess
             {
                 var nativeResource = (NativeResourceInfo)resource;
 
-                if (!(nativeResource.Kind == NativeResourceType.Icon || nativeResource.Kind == NativeResourceType.IconGroup))
+                if (!(nativeResource.Kind == NativeResourceType.Icon 
+                    || nativeResource.Kind == NativeResourceType.IconGroup
+                    || nativeResource.Kind == NativeResourceType.Cursor
+                    || nativeResource.Kind == NativeResourceType.CursorGroup))
                     return null;
-
-                return User32.GetResourceIcon(ModuleHandle, nativeResource.Id);
+                //TODO: from my test LoadIcon only works for IconGroup. 
+                if (nativeResource.Kind == NativeResourceType.IconGroup)
+                    return User32.GetResourceIcon(ModuleHandle, nativeResource.Id);
+                if (nativeResource.Kind == NativeResourceType.CursorGroup)
+                    return User32.GetResourceCursor(ModuleHandle, nativeResource.Id);
+                else
+                {
+                    //TODO: Icon resources are missing the icon header so we'll need to reconstruct an icon.
+                    //var iconData = GetStream(resource);
+                    return null;
+                }
             }
             else
             {

@@ -120,6 +120,7 @@
     <Compile Include="Native\Utilities.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ResourceAccess\ContentType.cs" />
     <Compile Include="ResourceAccess\Managed\CrossDomainSerializer.cs" />
     <Compile Include="ResourceAccess\Managed\ManagedResourceInfo.cs" />
     <Compile Include="ResourceAccess\Managed\ManagedResourceType.cs" />

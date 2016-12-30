@@ -10,6 +10,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
         private readonly string _ResourceManagerName;
         private readonly ManagedResourceType _Kind;
         private Type _SystemType;
+        private /*readonly*/ ContentType _ContentType;
 
         public override bool IsNative
         {
@@ -19,13 +20,19 @@ namespace ResourceExplorer.ResourceAccess.Managed
         public Type SystemType
         {
             get { return _SystemType; }
-            set { _SystemType = value; }
+            set
+            {
+                _SystemType = value;
+                CheckContentType();
+            }
         }
 
         public ManagedResourceType Kind
         {
             get { return _Kind; }
         }
+
+        public override ContentType ContentType { get { return _ContentType; } }
 
         public string ResourceManagerName
         {
@@ -67,6 +74,19 @@ namespace ResourceExplorer.ResourceAccess.Managed
             _Kind = kind;
             _SystemType = systemType;
             _ResourceManagerName = managerName;
+            _ContentType = ContentType.Unknown;
+        }
+
+        private void CheckContentType()
+        {
+            if (typeof(System.Drawing.Image).IsAssignableFrom(SystemType))
+                _ContentType = ContentType.Image;
+            else if (typeof(System.Drawing.Icon).IsAssignableFrom(SystemType))
+                _ContentType = ContentType.Icon;
+            else if (Kind == ManagedResourceType.ResourceEntry)
+                _ContentType = ContentType.Data;
+            else// if (Kind == ManagedResourceType.Embedded)
+                _ContentType = ContentType.Unknown;
         }
     }
 }
