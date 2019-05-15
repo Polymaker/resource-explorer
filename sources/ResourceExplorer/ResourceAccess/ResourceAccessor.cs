@@ -95,19 +95,18 @@ namespace ResourceExplorer.ResourceAccess
             if (resource == null || resource.Module != Module)
                 return null;
 
-            if (resource.IsNative)
+            if (resource is NativeResourceInfo nativeResource)
             {
-                var nativeResource = (NativeResourceInfo)resource;
-
-                if (nativeResource.Kind != NativeResourceType.Bitmap)
+                if (nativeResource.ResourceType.KnownType != KnownResourceType.Bitmap)
                     return null;
 
-                return User32.GetResourceBitmap(ModuleHandle, nativeResource.Id);
+                if (nativeResource.IsNamedResource)
+                    return User32.GetResourceBitmap(ModuleHandle, nativeResource.Name);
+                else
+                    return User32.GetResourceBitmap(ModuleHandle, nativeResource.Id);
             }
-            else
+            else if (resource is ManagedResourceInfo managedResource)
             {
-                var managedResource = (ManagedResourceInfo)resource;
-
                 if (!typeof(Image).IsAssignableFrom(managedResource.SystemType))
                     return null;
 
@@ -133,15 +132,15 @@ namespace ResourceExplorer.ResourceAccess
             {
                 var nativeResource = (NativeResourceInfo)resource;
 
-                if (!(nativeResource.Kind == NativeResourceType.Icon 
-                    || nativeResource.Kind == NativeResourceType.IconGroup
-                    || nativeResource.Kind == NativeResourceType.Cursor
-                    || nativeResource.Kind == NativeResourceType.CursorGroup))
+                if (!(nativeResource.NativeType == KnownResourceType.Icon 
+                    || nativeResource.NativeType == KnownResourceType.IconGroup
+                    || nativeResource.NativeType == KnownResourceType.Cursor
+                    || nativeResource.NativeType == KnownResourceType.CursorGroup))
                     return null;
                 //TODO: from my test LoadIcon only works for IconGroup. 
-                if (nativeResource.Kind == NativeResourceType.IconGroup)
+                if (nativeResource.NativeType == KnownResourceType.IconGroup)
                     return User32.GetResourceIcon(ModuleHandle, nativeResource.Id);
-                if (nativeResource.Kind == NativeResourceType.CursorGroup)
+                if (nativeResource.NativeType == KnownResourceType.CursorGroup)
                     return User32.GetResourceCursor(ModuleHandle, nativeResource.Id);
                 else
                 {

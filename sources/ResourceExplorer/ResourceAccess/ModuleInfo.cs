@@ -17,45 +17,24 @@ namespace ResourceExplorer.ResourceAccess
 {
     public class ModuleInfo : IDisposable
     {
-        private bool _ResourcesLoaded;
-        private readonly string _FileName;
-        private readonly string _Name;
-        private readonly bool _IsManaged;
-        private readonly ProcessorArchitecture _Architecture;
-        private bool isPE64;
-        private readonly string _Location;
-        private readonly FileVersionInfo _VersionInfo;
         private List<ResourceInfo> _Resources;
         private List<SatelliteAssemblyInfo> _SatelliteAssemblies;
         private List<ModuleRef> _ReferencedModules;
-        private string _DefaultNamespace;
 
         #region Properties
 
-        public string Name
-        {
-            get { return _Name; }
-        }
+        public string Name { get; }
 
-        public string FileName
-        {
-            get { return _FileName; }
-        }
+        public string FileName { get; }
 
-        public FileVersionInfo VersionInfo
-        {
-            get { return _VersionInfo; }
-        }
+        public FileVersionInfo VersionInfo { get; }
 
         public string Description
         {
             get { return VersionInfo != null ? VersionInfo.FileDescription : string.Empty; }
         }
 
-        public string Location
-        {
-            get { return _Location; }
-        }
+        public string Location { get; }
 
         public bool Is64Bit
         {
@@ -71,25 +50,13 @@ namespace ResourceExplorer.ResourceAccess
             }
         }
 
-        public ProcessorArchitecture Architecture
-        {
-            get { return _Architecture; }
-        }
+        public ProcessorArchitecture Architecture { get; }
 
-        public bool IsManaged
-        {
-            get { return _IsManaged; }
-        }
+        public bool IsManaged { get; }
 
-        public string DefaultNamespace
-        {
-            get { return _DefaultNamespace; }
-        }
+        public string DefaultNamespace { get; private set; }
 
-        public bool ResourcesLoaded
-        {
-            get { return _ResourcesLoaded; }
-        }
+        public bool ResourcesLoaded { get; private set; }
 
         public IList<SatelliteAssemblyInfo> SatelliteAssemblies
         {
@@ -128,29 +95,29 @@ namespace ResourceExplorer.ResourceAccess
 
         public ModuleInfo(string location)
         {
-            _Location = location;
-
-            if (!PEHelper.VerifyPEModule(location, out _IsManaged, out isPE64))
+            Location = location;
+            
+            if (!PEHelper.VerifyPEModule(location, out bool isManaged, out bool isPE64))
                 throw new BadImageFormatException("Specified file is not a valid assembly.");
+            IsManaged = isManaged;
+            FileName = Path.GetFileName(location);
+            VersionInfo = FileVersionInfo.GetVersionInfo(location);
 
-            _FileName = Path.GetFileName(location);
-            _VersionInfo = FileVersionInfo.GetVersionInfo(location);
-
-            _Name = Path.GetFileNameWithoutExtension(FileName);
-            _DefaultNamespace = string.Empty;
+            Name = Path.GetFileNameWithoutExtension(FileName);
+            DefaultNamespace = string.Empty;
 
             if (IsManaged)
             {
                 var assemName = AssemblyName.GetAssemblyName(location);
-                _Architecture = assemName.ProcessorArchitecture;
-                _Name = assemName.Name;
+                Architecture = assemName.ProcessorArchitecture;
+                Name = assemName.Name;
             }
             else
             {
-                _Architecture = isPE64 ? ProcessorArchitecture.Amd64 : ProcessorArchitecture.X86;
+                Architecture = isPE64 ? ProcessorArchitecture.Amd64 : ProcessorArchitecture.X86;
             }
             
-            _ResourcesLoaded = false;
+            ResourcesLoaded = false;
             _Resources = new List<ResourceInfo>();
             _SatelliteAssemblies = new List<SatelliteAssemblyInfo>();
             _ReferencedModules = new List<ModuleRef>();
@@ -168,7 +135,7 @@ namespace ResourceExplorer.ResourceAccess
             if (IsManaged)
                 LoadManagedResources();
 
-            _ResourcesLoaded = true;
+            ResourcesLoaded = true;
         }
 
         private void LoadNativeResources()
@@ -182,7 +149,7 @@ namespace ResourceExplorer.ResourceAccess
                     var resources = Kernel32.EnumResourceNames(moduleHandle, resType);
                     foreach (var resName in resources)
                     {
-                        _Resources.Add(new NativeResourceInfo(this, (NativeResourceType)resType, resName.ID, resName.Name));
+                        _Resources.Add(new NativeResourceInfo(this, resType, resName));
                         resName.Dispose();
                     }
                 }
@@ -207,7 +174,7 @@ namespace ResourceExplorer.ResourceAccess
                 if (tmpAssembly == null)
                     return;
 
-                _DefaultNamespace = tmpAssembly.FindDefaultNamespace();
+                DefaultNamespace = tmpAssembly.FindDefaultNamespace();
                 var resourceNames = tmpAssembly.GetManifestResourceNames();
                 foreach (var resName in resourceNames)
                 {
@@ -275,40 +242,45 @@ namespace ResourceExplorer.ResourceAccess
         {
             using (Stream fileStream = new FileStream(Location, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                var importTableInfo = PEHelper.GetImageDirectories(fileStream)[1];
-                var sections = PEHelper.GetImageSections(fileStream);
-                var importSection = sections.FirstOrDefault(s =>
-                s.VirtualAddress <= importTableInfo.VirtualAddress &&
-                s.VirtualAddress + s.SizeOfRawData > importTableInfo.VirtualAddress);
+                var peInfo = PEHeaderInfo.ReadInfo(fileStream);
+                var importTableInfo = peInfo.ImageTables[1];
+                var importSection = peInfo.GetSectionForTable(importTableInfo);
 
                 if (importSection.SizeOfRawData > 0)
                 {
                     var dirOffset = importSection.PointerToRawData + (importTableInfo.VirtualAddress - importSection.VirtualAddress);
                     fileStream.Seek(dirOffset, SeekOrigin.Begin);
-                    var binaryReader = new BinaryReader(fileStream);
 
-                    IMAGE_IMPORT_DIRECTORY moduleImportEntry;
-                    do
+                    using (var binaryReader = new BinaryReader(fileStream))
                     {
-                        moduleImportEntry = fileStream.ReadStructure<IMAGE_IMPORT_DIRECTORY>();
-                        if (moduleImportEntry.ModuleName == 0)
-                            break;
 
-                        var currentStreamPos = fileStream.Position;
-                        var dirNameOffset = importSection.PointerToRawData + (moduleImportEntry.ModuleName - importSection.VirtualAddress);
-                        fileStream.Seek(dirNameOffset, SeekOrigin.Begin);
-
-                        var moduleName = binaryReader.ReadNullTerminatedString();
-                        _ReferencedModules.Add(new ModuleRef(ModuleType.Native, moduleName)
+                        IMAGE_IMPORT_DIRECTORY moduleImportEntry;
+                        do
                         {
-                            Location = FindModuleLocation(Path.GetDirectoryName(Location), moduleName)
-                        });
+                            moduleImportEntry = fileStream.ReadStructure<IMAGE_IMPORT_DIRECTORY>();
+                            if (moduleImportEntry.ModuleName == 0)
+                                break;
 
-                        fileStream.Position = currentStreamPos;
+                            IMAGE_SECTION_HEADER moduleSection = importSection;
+                            if (moduleImportEntry.ModuleName < importSection.VirtualAddress)
+                                moduleSection = peInfo.GetSectionForVirtualOffset(moduleImportEntry.ModuleName);
+
+                            var currentStreamPos = fileStream.Position;
+                            var dirNameOffset = moduleSection.PointerToRawData + (moduleImportEntry.ModuleName - moduleSection.VirtualAddress);
+                            fileStream.Seek(dirNameOffset, SeekOrigin.Begin);
+
+                            var moduleName = binaryReader.ReadNullTerminatedString();
+                            _ReferencedModules.Add(new ModuleRef(ModuleType.Native, moduleName)
+                            {
+                                Location = FindModuleLocation(Path.GetDirectoryName(Location), moduleName)
+                            });
+
+                            fileStream.Position = currentStreamPos;
+                        }
+                        while (true);
                     }
-                    while (true);
                 }
-               
+
             }
         }
 
@@ -334,6 +306,7 @@ namespace ResourceExplorer.ResourceAccess
 
         private string FindModuleLocation(string lookupDirectory, string moduleName)
         {
+            //TODO: check GAC and systrm directorires
             var matchingFiles = Directory.EnumerateFiles(lookupDirectory, moduleName + ".*");
             if (matchingFiles.Any())
                 return matchingFiles.First();
@@ -365,15 +338,12 @@ namespace ResourceExplorer.ResourceAccess
         //TODO: combine IsValid and CanOpen to return detailed information (eg: reason why it cannot be opened)
         public static bool IsValid(string executableLocation)
         {
-            bool is64Bit, isManaged;
-            return PEHelper.VerifyPEModule(executableLocation, out isManaged, out is64Bit);
+            return PEHelper.VerifyPEModule(executableLocation, out _, out _);
         }
         //TODO: combine IsValid and CanOpen to return detailed information (eg: reason why it cannot be opened)
         public static bool CanOpen(string executableLocation)
         {
-            bool is64Bit, isManaged;
-
-            if (!PEHelper.VerifyPEModule(executableLocation, out isManaged, out is64Bit))
+            if (!PEHelper.VerifyPEModule(executableLocation, out bool isManaged, out bool is64Bit))
                 return false;
 
             if (is64Bit && !ResourceExplorer.Native.Utilities.Is64BitOperatingSystem)

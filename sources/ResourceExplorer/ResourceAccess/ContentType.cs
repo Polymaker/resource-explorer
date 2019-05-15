@@ -10,6 +10,7 @@ namespace ResourceExplorer.ResourceAccess
         Icon,
         Image,
         Data,
+        Text,
         Unknown
     }
 }

@@ -21,7 +21,7 @@ namespace ResourceExplorer.Native.API
         public static extern IntPtr CreateToolhelp32Snapshot(SnapshotFlags dwFlags, uint th32ProcessID);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern bool EnumResourceNames(IntPtr hModule, ResourceType dwID, EnumResourceNamesDelegate lpEnumFunc, IntPtr lParam);
+        public static extern bool EnumResourceNames(IntPtr hModule, IntPtr dwID, EnumResourceNamesDelegate lpEnumFunc, IntPtr lParam);
 
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool EnumResourceTypes(IntPtr hModule, EnumResourceTypesDelegate lpEnumFunc, IntPtr lParam);
@@ -51,13 +51,13 @@ namespace ResourceExplorer.Native.API
         #region FindResource
 
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        public static extern IntPtr FindResource(IntPtr hModule, IntPtr lpName, ResourceType lpType);
+        public static extern IntPtr FindResource(IntPtr hModule, IntPtr lpName, IntPtr lpType);
 
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        public static extern IntPtr FindResource(IntPtr hModule, string lpName, ResourceType lpType);
+        public static extern IntPtr FindResource(IntPtr hModule, string lpName, IntPtr lpType);
 
         [DllImport("kernel32.dll", SetLastError = true)]
-        public static extern IntPtr FindResource(IntPtr hModule, uint lpName, ResourceType lpType);
+        public static extern IntPtr FindResource(IntPtr hModule, uint lpName, IntPtr lpType);
         
         #endregion
 
@@ -87,9 +87,9 @@ namespace ResourceExplorer.Native.API
 
         #region Delegates
 
-        public delegate bool EnumResourceNamesDelegate(IntPtr hModule, ResourceType lpszType, IntPtr lpszName, IntPtr lParam);
+        public delegate bool EnumResourceNamesDelegate(IntPtr hModule, IntPtr lpszType, IntPtr lpszName, IntPtr lParam);
 
-        public delegate bool EnumResourceTypesDelegate(IntPtr hModule, ResourceType lpszType, IntPtr lParam);
+        public delegate bool EnumResourceTypesDelegate(IntPtr hModule, IntPtr lpszType, IntPtr lParam);
 
         #endregion
 
@@ -140,12 +140,19 @@ namespace ResourceExplorer.Native.API
 
         #region Utility methods
 
-        public static List<ResourceType> EnumResourceTypes(IntPtr moduleHandle)
+        public static List<ResourceAccess.Native.NativeResourceType> EnumResourceTypes(IntPtr moduleHandle)
         {
-            var typeList = new List<ResourceType>();
+            var typeList = new List<ResourceAccess.Native.NativeResourceType>();
             EnumResourceTypesDelegate enumDelegate = (hModule, lpszType, lParam) =>
             {
-                typeList.Add(lpszType);
+                if (lpszType.ToInt64() > 30)
+                {
+                    string typeName = Marshal.PtrToStringAnsi(lpszType);
+                    typeList.Add(new ResourceAccess.Native.NativeResourceType(typeName));
+                }
+                else
+                    typeList.Add(new ResourceAccess.Native.NativeResourceType(lpszType.ToInt32()));
+
                 return true;
             };
             GC.KeepAlive(enumDelegate);
@@ -154,17 +161,25 @@ namespace ResourceExplorer.Native.API
             return typeList;
         }
 
-        public static List<ResourceName> EnumResourceNames(IntPtr moduleHandle, ResourceType resourceType)
+        public static List<ResourceName> EnumResourceNames(IntPtr moduleHandle, ResourceAccess.Native.NativeResourceType resourceType)
         {
             var resList = new List<ResourceName>();
+            IntPtr typePtr = IntPtr.Zero;
+            if (resourceType.IsCustom)
+                typePtr = Marshal.StringToHGlobalAnsi(resourceType.Name);
+            else
+                typePtr = new IntPtr(resourceType.ID);
+
+            //if (resourceType.IsCustom)
             EnumResourceNamesDelegate enumDelegate = (hModule, lpszType, lpszName, lParam) =>
             {
                 resList.Add(new ResourceName(lpszName));
                 return true;
             };
             GC.KeepAlive(enumDelegate);
-            EnumResourceNames(moduleHandle, resourceType, enumDelegate, IntPtr.Zero);
-
+            EnumResourceNames(moduleHandle, typePtr, enumDelegate, IntPtr.Zero);
+            if (resourceType.IsCustom)
+                Marshal.FreeHGlobal(typePtr);
             return resList;
         }
 

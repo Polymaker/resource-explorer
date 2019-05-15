@@ -12,6 +12,8 @@ namespace ResourceExplorer.Native.Types
         public IntPtr Handle { get; set; }
         public string Name { get; set; }
 
+        public bool IsNamedResource { get; private set; }
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ResourceName"/> class.
         /// </summary>
@@ -28,6 +30,7 @@ namespace ResourceExplorer.Native.Types
             {
                 Name = Marshal.PtrToStringAnsi(lpName);
                 Handle = Marshal.StringToHGlobalAuto(Name);
+                IsNamedResource = true;
             }
         }
 

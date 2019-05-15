@@ -47,6 +47,20 @@ namespace ResourceExplorer.Native.API
             }
         }
 
+        [HandleProcessCorruptedStateExceptions]
+        public static Bitmap GetResourceBitmap(IntPtr hInstance, string resourceName)
+        {
+            try
+            {
+                IntPtr bmpHandle = User32.LoadBitmap(hInstance, resourceName);
+                return Bitmap.FromHbitmap(bmpHandle);
+            }
+            catch (AccessViolationException)
+            {
+                return null;
+            }
+        }
+
         public static Icon GetResourceIcon(IntPtr hInstance, uint resourceId)
         {
             IntPtr iconHandle = User32.LoadIcon(hInstance, resourceId);

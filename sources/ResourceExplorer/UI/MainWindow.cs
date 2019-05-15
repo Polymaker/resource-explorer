@@ -386,7 +386,7 @@ namespace ResourceExplorer.UI
                 }
                 else if (resource is NativeResourceInfo)
                 {
-                    Description = ((NativeResourceInfo)resource).Kind.ToString();
+                    Description = ((NativeResourceInfo)resource).ResourceType.ToString();
                 }
             }
             public override bool HasChilds()
