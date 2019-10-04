@@ -75,6 +75,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
             _SystemType = systemType;
             _ResourceManagerName = managerName;
             _ContentType = ContentType.Unknown;
+            CheckContentType();
         }
 
         private void CheckContentType()

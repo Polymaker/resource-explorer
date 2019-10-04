@@ -97,13 +97,33 @@ namespace ResourceExplorer.ResourceAccess
 
             if (resource is NativeResourceInfo nativeResource)
             {
-                if (nativeResource.ResourceType.KnownType != KnownResourceType.Bitmap)
-                    return null;
-
-                if (nativeResource.IsNamedResource)
-                    return User32.GetResourceBitmap(ModuleHandle, nativeResource.Name);
+                var resourceType = nativeResource.ResourceType;
+                if (resourceType.IsKnownType &&
+                    resourceType.KnownType == KnownResourceType.Bitmap)
+                {
+                    var stream = GetStream(resource);
+                    if (stream != null)
+                        return ImageFromBITMAPINFOHEADER(stream);
+                    //if (nativeResource.IsNamedResource)
+                    //    return User32.GetResourceBitmap(ModuleHandle, nativeResource.Name);
+                    //else
+                    //    return User32.GetResourceBitmap(ModuleHandle, nativeResource.Id);
+                }
                 else
-                    return User32.GetResourceBitmap(ModuleHandle, nativeResource.Id);
+                {
+                    if (resourceType.Name == "PNG")
+                    {
+                        var stream = GetStream(resource);
+                        if (stream != null)
+                            return Image.FromStream(stream);
+                    }
+                    else
+                    {
+                        var stream = GetStream(resource);
+                        if (stream != null)
+                            return ImageFromBITMAPINFOHEADER(stream);
+                    }
+                }
             }
             else if (resource is ManagedResourceInfo managedResource)
             {
@@ -123,6 +143,54 @@ namespace ResourceExplorer.ResourceAccess
             return null;
         }
 
+        public Image ImageFromBITMAPINFOHEADER(Stream stream)
+        {
+            stream.Position = 0;
+            using (var br = new BinaryReader(stream))
+            {
+                var header = br.ReadStructure<ResourceExplorer.Native.Types.BITMAPINFOHEADER>();
+                var bmp = new Bitmap(header.biWidth, header.biHeight);
+
+                for (int y = bmp.Height - 1; y >= 0; y--)
+                {
+                    for (int x = 0; x < bmp.Width; x++)
+                    {
+                        Color pixelColor = Color.Empty;
+                        switch (header.biBitCount)
+                        {
+                            default:
+                                break;
+                            //case 16:
+                            //    {
+                            //        break;
+                            //    }
+                            case 24:
+                                {
+                                    byte b = br.ReadByte();
+                                    byte g = br.ReadByte();
+                                    byte r = br.ReadByte();
+                                    pixelColor = Color.FromArgb(r, g, b);
+                                    break;
+                                }
+                            case 32:
+                                {
+                                    byte b = br.ReadByte();
+                                    byte g = br.ReadByte();
+                                    byte r = br.ReadByte();
+                                    byte a = br.ReadByte();
+                                    pixelColor = Color.FromArgb(a, r, g, b);
+                                    break;
+                                }
+                        }
+                       
+                        bmp.SetPixel(x, y, pixelColor);
+                    }
+                }
+
+                return bmp;
+            }
+        }
+
         public Icon GetIcon(ResourceInfo resource)
         {
             if (resource == null || resource.Module != Module)
@@ -137,10 +205,21 @@ namespace ResourceExplorer.ResourceAccess
                     || nativeResource.NativeType == KnownResourceType.Cursor
                     || nativeResource.NativeType == KnownResourceType.CursorGroup))
                     return null;
+
                 //TODO: from my test LoadIcon only works for IconGroup. 
-                if (nativeResource.NativeType == KnownResourceType.IconGroup)
+                if (nativeResource.NativeType == KnownResourceType.Icon)
+                {
+                    if (nativeResource.IsNamedResource)
+                        return User32.GetResourceIcon(ModuleHandle, nativeResource.Name);
                     return User32.GetResourceIcon(ModuleHandle, nativeResource.Id);
-                if (nativeResource.NativeType == KnownResourceType.CursorGroup)
+                }
+                else if (nativeResource.NativeType == KnownResourceType.IconGroup)
+                {
+                    if(nativeResource.IsNamedResource)
+                        return User32.GetResourceIconGroup(ModuleHandle, nativeResource.Name);
+                    return User32.GetResourceIconGroup(ModuleHandle, nativeResource.Id);
+                }
+                else if(nativeResource.NativeType == KnownResourceType.CursorGroup)
                     return User32.GetResourceCursor(ModuleHandle, nativeResource.Id);
                 else
                 {

@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -144,6 +145,8 @@ namespace ResourceExplorer.UI
 
             if (expand)
                 treeViewResources.Expand(treeNode);
+            module.LoadResources();
+            FillImageResourcesList(module);
         }
 
         #region Context Menu
@@ -415,11 +418,67 @@ namespace ResourceExplorer.UI
             }
         }
 
-
-
         #endregion
 
         #endregion
+
+        private void FillImageResourcesList(ModuleInfo module)
+        {
+            ResourcesImages.Images.Clear();
+            ImagesListView.Items.Clear();
+            int imageIndex = 0;
+            using (var accessor = module.GetAccessor())
+            {
+                foreach (var resource in module.Resources)
+                {
+                    try
+                    {
+                        if (resource.ContentType == ContentType.Image)
+                        {
+                            var image = accessor.GetImage(resource);
+                            if (image == null)
+                                continue;
+
+                            if (image.Width != image.Height || image.Width < 64)
+                            {
+                                var bmp2 = new Bitmap(64, 64);
+                                float scale = (image.Width > image.Height ? 64f / (float)image.Width : 64f / (float)image.Height);
+
+                                using (var g = Graphics.FromImage(bmp2))
+                                {
+                                    g.InterpolationMode = scale < 1 ?
+                                        System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic :
+                                        System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                                    g.DrawImage(image, 0, 0, (int)(image.Width * scale), (int)(image.Height * scale));
+                                }
+                                image.Dispose();
+                                image = bmp2;
+                            }
+
+                            string resName = $"Res_{imageIndex++}";
+                            ResourcesImages.Images.Add(resName, image);
+                            var lvi = new ListViewItem(resource.Name);
+                            lvi.ImageKey = resName;
+
+                            ImagesListView.Items.Add(lvi);
+                        }
+                        else if (resource.ContentType == ContentType.Icon)
+                        {
+                            var image = accessor.GetIcon(resource);
+                            if (image == null)
+                                continue;
+                            string resName = $"Res_{imageIndex++}";
+                            ResourcesImages.Images.Add(resName, image);
+                            var lvi = new ListViewItem(resource.Name);
+                            lvi.ImageKey = resName;
+                            ImagesListView.Items.Add(lvi);
+                        }
+                    }
+                    catch { }
+                    
+                }
+            }
+        }
 
         private void exportToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -429,8 +488,32 @@ namespace ResourceExplorer.UI
                 var resourceNode = (ResourceNode)treeViewResources.SelectedObjects[0];
                 if (resourceNode.Resource.ContentType == ContentType.Image)
                 {
+                    Image resImage = null;
                     using (var resAccess = resourceNode.Resource.Module.GetAccessor())
-                        pictureBox1.Image = resAccess.GetImage(resourceNode.Resource);
+                        resImage = resAccess.GetImage(resourceNode.Resource);
+
+
+                    if (resImage != null)
+                    {
+                        using (var sfd = new SaveFileDialog())
+                        {
+                            var imageFormat = resImage.RawFormat;
+                            if (resImage.PixelFormat == PixelFormat.Format32bppArgb)
+                                imageFormat = ImageFormat.Png;
+
+                            if (imageFormat.Equals(ImageFormat.Png))
+                                sfd.FileName = $"{resourceNode.Resource.Name}.png";
+                            else
+                                sfd.FileName = $"{resourceNode.Resource.Name}.bmp";
+
+                            if (sfd.ShowDialog() == DialogResult.OK)
+                            {
+                                resImage.Save(sfd.FileName, imageFormat);
+                            }
+                        }
+                    }
+
+                    pictureBox1.Image = resImage;
                 }
                 else if (resourceNode.Resource.ContentType == ContentType.Icon)
                 {

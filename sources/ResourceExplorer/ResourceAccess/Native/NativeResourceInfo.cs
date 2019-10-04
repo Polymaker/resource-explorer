@@ -53,9 +53,20 @@ namespace ResourceExplorer.ResourceAccess.Native
                         break;
                 }
             }
-            else if (type.Name == "PNG")
+            else
             {
-                _ContentType = ContentType.Image;
+                switch (type.Name)
+                {
+                    case "PNG":
+                    case "BMP":
+                    case "BITMAP":
+                    case "IMAGE":
+                        _ContentType = ContentType.Image;
+                        break;
+                    default:
+                        _ContentType = ContentType.Unknown;
+                        break;
+                }
             }
         }
 

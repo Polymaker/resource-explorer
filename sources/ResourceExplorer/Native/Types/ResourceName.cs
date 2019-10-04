@@ -34,6 +34,8 @@ namespace ResourceExplorer.Native.Types
             }
         }
 
+
+
         ~ResourceName()
         {
             Free();

@@ -98,6 +98,8 @@
     <Compile Include="Form1.Designer.cs">
       <DependentUpon>Form1.cs</DependentUpon>
     </Compile>
+    <Compile Include="Native\Enums\BitmapCompressionMode.cs" />
+    <Compile Include="Native\Enums\ImageLoadOption.cs" />
     <Compile Include="Native\Enums\SFGAOF.cs" />
     <Compile Include="Native\PEHelper.cs" />
     <Compile Include="Native\PE\DataSectionFlags.cs" />
@@ -117,6 +119,7 @@
     <Compile Include="Native\PE\PEHeaderInfo.cs" />
     <Compile Include="Native\SafeProcessHandle.cs" />
     <Compile Include="Native\StructResult.cs" />
+    <Compile Include="Native\Types\BITMAPINFOHEADER.cs" />
     <Compile Include="Native\Types\CLIENT_ID.cs" />
     <Compile Include="Native\Types\GENERIC_MAPPING.cs" />
     <Compile Include="Native\Types\MODULEENTRY32.cs" />
