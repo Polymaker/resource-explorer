@@ -25,6 +25,8 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
         private CrossDomainSerializer Deserializer;
 
+        internal static List<string> AssemblyDirectories { get; } = new List<string>();
+
         public int Id
         {
             get { return _Id; }
@@ -52,13 +54,46 @@ namespace ResourceExplorer.ResourceAccess.Managed
             ActiveDomains = new ConcurrentDictionary<int, TemporaryAppDomain>();
         }
 
-        public TemporaryAppDomain(string name)
+        public TemporaryAppDomain(string name, string directory = null)
         {
-            Domain = AppDomain.CreateDomain(name);
+            _LoadedAssemblies = new ConcurrentDictionary<string, TemporaryAssembly>();
+
+            //if (!string.IsNullOrEmpty(directory))
+            //{
+            //    AppDomainSetup domaininfo = new AppDomainSetup
+            //    {
+            //        ApplicationBase = directory
+            //    };
+            //    var adevidence = AppDomain.CurrentDomain.Evidence;
+            //    Domain = AppDomain.CreateDomain(name, adevidence, domaininfo);
+            //}
+            //else
+                Domain = AppDomain.CreateDomain(name);
+           
+            //Domain.AssemblyResolve += Domain_AssemblyResolve;
             _Id = Domain.Id;
             Register(this);
             Deserializer = CreateRefObject<CrossDomainSerializer>();
-            _LoadedAssemblies = new ConcurrentDictionary<string, TemporaryAssembly>();
+        }
+
+        private Assembly Domain_AssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            //foreach (var asssemblyDir in AssemblyDirectories)
+            //{
+            //    foreach (var assemFile in Directory.EnumerateFiles(asssemblyDir, "*.dll"))
+            //    {
+            //        try
+            //        {
+            //            var name = AssemblyName.GetAssemblyName(assemFile);
+            //            if (name.FullName == args.Name)
+            //                return Assembly.LoadFrom(assemFile);
+                        
+            //        }
+            //        catch { }
+                    
+            //    }
+            //}
+            return null;
         }
 
         public TemporaryAppDomain()
@@ -79,8 +114,13 @@ namespace ResourceExplorer.ResourceAccess.Managed
             Unregister(this);
             if (Domain != null)
             {
+                //Domain.AssemblyResolve -= Domain_AssemblyResolve;
                 try { AppDomain.Unload(Domain); }
                 catch (AppDomainUnloadedException)
+                {
+                    Trace.WriteLine("It looks like an object obtained from a temporary AppDomain is still referenced in the main AppDomain.");
+                }
+                catch (CannotUnloadAppDomainException)
                 {
                     Trace.WriteLine("It looks like an object obtained from a temporary AppDomain is still referenced in the main AppDomain.");
                 }
@@ -178,6 +218,21 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
             _LoadedAssemblies.TryAdd(tmpAssembly.FullName, tmpAssembly);
             return tmpAssembly;
+        }
+
+        public string GetAssemblyLocation(AssemblyName assemblyName)
+        {
+            try
+            {
+                var tmpAssembly = CreateRefObject<TemporaryAssembly>();
+                if (tmpAssembly.Load(assemblyName.FullName))
+                {
+                    return tmpAssembly.Location;
+                }
+
+            }
+            catch { }
+            return string.Empty;
         }
 
         public object ReleaseObject(object value, Type objectType)

@@ -20,6 +20,7 @@ namespace ResourceExplorer.ResourceAccess
         private List<ResourceInfo> _Resources;
         private List<SatelliteAssemblyInfo> _SatelliteAssemblies;
         private List<ModuleRef> _ReferencedModules;
+        private List<NativeResourceType> _NativeResourceTypes;
 
         #region Properties
 
@@ -83,6 +84,11 @@ namespace ResourceExplorer.ResourceAccess
             get { return Resources.OfType<NativeResourceInfo>(); }
         }
 
+        public IList<NativeResourceType> NativeResourceTypes
+        {
+            get { return _NativeResourceTypes.AsReadOnly(); }
+        }
+
         public IList<CultureInfo> Cultures
         {
             get
@@ -121,6 +127,7 @@ namespace ResourceExplorer.ResourceAccess
             _Resources = new List<ResourceInfo>();
             _SatelliteAssemblies = new List<SatelliteAssemblyInfo>();
             _ReferencedModules = new List<ModuleRef>();
+            _NativeResourceTypes = new List<NativeResourceType>();
         }
 
         #region Resources loading
@@ -144,6 +151,7 @@ namespace ResourceExplorer.ResourceAccess
             try
             {
                 var resourceTypes = Kernel32.EnumResourceTypes(moduleHandle);
+                _NativeResourceTypes.AddRange(resourceTypes);
                 foreach (var resType in resourceTypes)
                 {
                     var resources = Kernel32.EnumResourceNames(moduleHandle, resType);
@@ -288,7 +296,7 @@ namespace ResourceExplorer.ResourceAccess
         {
             var moduleDirectory = Path.GetDirectoryName(Location);
             
-            using (var tempAppDom = new TemporaryAppDomain(FileName))
+            using (var tempAppDom = new TemporaryAppDomain(FileName, moduleDirectory))
             {
                 var tmpAssembly = tempAppDom.LoadFrom(Location);
                 if (tmpAssembly == null)
@@ -296,9 +304,13 @@ namespace ResourceExplorer.ResourceAccess
 
                 foreach (var assemName in tmpAssembly.GetReferencedAssemblies())
                 {
+                    string assemLocation = tempAppDom.GetAssemblyLocation(assemName);
+                    if (string.IsNullOrEmpty(assemLocation))
+                        assemLocation = FindModuleLocation(moduleDirectory, assemName.Name);
+
                     _ReferencedModules.Add(new ModuleRef(assemName)
                     {
-                        Location = FindModuleLocation(moduleDirectory, assemName.Name)
+                        Location = assemLocation
                     });
                 }
             }

@@ -43,6 +43,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
         public TemporaryAssembly(string assemblyLocation)
         {
             _Library = Assembly.LoadFrom(assemblyLocation);
+            LoadLocation();
         }
 
         public bool LoadFrom(string assemblyLocation)
@@ -52,12 +53,14 @@ namespace ResourceExplorer.ResourceAccess.Managed
                 try
                 {
                     _Library = Assembly.LoadFrom(assemblyLocation);
+
                 }
                 catch (Exception ex)
                 {
                     Trace.WriteLine(string.Format("Couldn't load assembly '{0}':\r\n\t{1}", assemblyLocation, ex));
                 }
             }
+            LoadLocation();
             return _Library != null;
         }
 
@@ -74,7 +77,20 @@ namespace ResourceExplorer.ResourceAccess.Managed
                     Trace.WriteLine(string.Format("Couldn't load assembly '{0}':\r\n\t{1}", assemblyString, ex));
                 }
             }
+            LoadLocation();
             return _Library != null;
+        }
+
+        private void LoadLocation()
+        {
+            if (_Library != null)
+            {
+                string directory = Path.GetDirectoryName(_Library.Location);
+                if (directory.ToUpper().Contains("WINDOWS\\") && directory.Contains("GAC"))
+                    return;
+                if (!TemporaryAppDomain.AssemblyDirectories.Contains(directory))
+                    TemporaryAppDomain.AssemblyDirectories.Add(directory);
+            }
         }
 
         public string[] GetManifestResourceNames()
@@ -137,6 +153,18 @@ namespace ResourceExplorer.ResourceAccess.Managed
         public AssemblyName[] GetReferencedAssemblies()
         {
             return Library.GetReferencedAssemblies();
+        }
+
+        public string GetAssemblyPath(AssemblyName assemblyName)
+        {
+            try
+            {
+                var assem = Assembly.Load(assemblyName);
+                return Path.GetDirectoryName(assem.Location);
+            }
+            catch { }
+            
+            return string.Empty;
         }
 
         public ResourceManagerProxy GetResourceManager(string name)

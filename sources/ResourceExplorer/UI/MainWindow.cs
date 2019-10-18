@@ -145,8 +145,8 @@ namespace ResourceExplorer.UI
 
             if (expand)
                 treeViewResources.Expand(treeNode);
-            module.LoadResources();
-            FillImageResourcesList(module);
+            //module.LoadResources();
+            //FillImageResourcesList(module);
         }
 
         #region Context Menu
@@ -218,14 +218,17 @@ namespace ResourceExplorer.UI
             public string Description { get; set; }
             public string ImageKey { get; set; }
             private ArrayList childs;
+
             public virtual bool HasChilds()
             {
                 return false;
             }
+
             protected virtual ArrayList FetchChildrens()
             {
                 return new ArrayList();
             }
+
             public ArrayList GetChildrens()
             {
                 if (childs == null)
@@ -256,6 +259,7 @@ namespace ResourceExplorer.UI
         class ModuleNode : BaseTreeNode
         {
             public ModuleInfo Module { get; set; }
+
             public ModuleNode(ModuleInfo module)
             {
                 Module = module;
@@ -263,12 +267,14 @@ namespace ResourceExplorer.UI
                 ImageKey = module.FileName.Contains("dll") ? "dll" : "exe";
                 Description = string.Format("{0} ({1})", module.IsManaged ? ".Net" : "Native", module.Architecture);
             }
+
             public override bool HasChilds()
             {
                 if (!Module.ResourcesLoaded)
                     return true;
                 return Module.Resources.Count > 0;
             }
+
             protected override ArrayList FetchChildrens()
             {
                 var nodes = new ArrayList();
@@ -288,7 +294,8 @@ namespace ResourceExplorer.UI
                 }
 
                 nodes.Add(new ResourceTypeNode(Module, true));
-                nodes.Add(new ResourceTypeNode(Module, false));
+                if (Module.IsManaged)
+                    nodes.Add(new ResourceTypeNode(Module, false));
                 return nodes;
             }
         }
@@ -321,6 +328,7 @@ namespace ResourceExplorer.UI
         {
             public ModuleInfo Module { get; set; }
             public bool IsNative { get; set; }
+
             public ResourceTypeNode(ModuleInfo module, bool isNative)
             {
                 Module = module;
@@ -328,6 +336,7 @@ namespace ResourceExplorer.UI
                 Text = isNative ? "Native Resources" : "Managed Resources";
                 ImageKey = "folder";
             }
+
             public override bool HasChilds()
             {
                 if (!Module.ResourcesLoaded)
@@ -337,19 +346,55 @@ namespace ResourceExplorer.UI
                 else
                     return Module.ManagedResources.Count() > 0;
             }
+
             protected override ArrayList FetchChildrens()
             {
                 if (!Module.ResourcesLoaded)
                     Module.LoadResources();
 
                 if (IsNative)
-                    return new ArrayList(Module.NativeResources.Select(x => new ResourceNode(x)).ToArray());
+                {
+                    return new ArrayList(Module.NativeResourceTypes
+                        .Select(x => new NativeResourceTypeNode(Module, x)).ToArray());
+                    //return new ArrayList(Module.NativeResources.Select(x => new ResourceNode(x)).ToArray());
+                }
                 else
+                {
                     return new ArrayList(Module.ManagedResources
                         .Where(x => string.IsNullOrEmpty(x.ResourceManagerName))
                         .Select(x => new ResourceNode(x)).OrderBy(x => x.Text).ToArray());
+                }
             }
         }
+
+        class NativeResourceTypeNode : BaseTreeNode
+        {
+            public ModuleInfo Module { get; set; }
+            public NativeResourceType ResourceType { get; set; }
+
+            public NativeResourceTypeNode(ModuleInfo module, NativeResourceType resourceType)
+            {
+                Module = module;
+                ResourceType = resourceType;
+                Text = resourceType.ToString();
+                ImageKey = "folder";
+            }
+
+            public override bool HasChilds()
+            {
+                if (!Module.ResourcesLoaded)
+                    return true;
+                return Module.NativeResources.Any(x => x.ResourceType == ResourceType);
+            }
+
+            protected override ArrayList FetchChildrens()
+            {
+                return new ArrayList(Module.NativeResources
+                    .Where(x=>x.ResourceType == ResourceType)
+                    .Select(x => new ResourceNode(x)).ToArray());
+            }
+        }
+
         class ResourceNode : BaseTreeNode
         {
             public ResourceInfo Resource { get; set; }

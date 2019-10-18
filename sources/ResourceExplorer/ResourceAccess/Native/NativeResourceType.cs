@@ -29,6 +29,16 @@ namespace ResourceExplorer.ResourceAccess.Native
             Name = name;
         }
 
+        public static bool operator ==(NativeResourceType left, NativeResourceType right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(NativeResourceType left, NativeResourceType right)
+        {
+            return !(left == right);
+        }
+
         public override bool Equals(object obj)
         {
             if (obj is NativeResourceType type)

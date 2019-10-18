@@ -111,7 +111,6 @@ namespace ResourceExplorer.Utilities
             }
         }
 
-
         public static Icon IconFromUnmanagedResource(IntPtr dibPtr, uint dataSize)
         {
             var bih = Marshal.PtrToStructure<BITMAPINFOHEADER>(dibPtr);
