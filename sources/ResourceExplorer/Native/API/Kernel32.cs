@@ -83,6 +83,9 @@ namespace ResourceExplorer.Native.API
         [DllImport("kernel32.dll")]
         public static extern bool Module32Next(IntPtr hSnapshot, ref MODULEENTRY32 lpme);
 
+        [DllImport("kernel32.dll", EntryPoint = "CopyMemory", SetLastError = false)]
+        public static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
+
         #endregion
 
         #region Delegates
@@ -148,6 +151,8 @@ namespace ResourceExplorer.Native.API
                 if (lpszType.ToInt64() > 30)
                 {
                     string typeName = Marshal.PtrToStringAnsi(lpszType);
+                    if (string.IsNullOrEmpty(typeName))
+                        typeName = lpszType.ToString();
                     typeList.Add(new ResourceAccess.Native.NativeResourceType(typeName));
                 }
                 else
@@ -155,31 +160,32 @@ namespace ResourceExplorer.Native.API
 
                 return true;
             };
-            GC.KeepAlive(enumDelegate);
+            
             EnumResourceTypes(moduleHandle, enumDelegate, IntPtr.Zero);
-            typeList = typeList.Distinct().ToList();//IDR why this is needed
+
+            GC.KeepAlive(enumDelegate);
+
             return typeList;
         }
 
         public static List<ResourceName> EnumResourceNames(IntPtr moduleHandle, ResourceAccess.Native.NativeResourceType resourceType)
         {
             var resList = new List<ResourceName>();
-            IntPtr typePtr = IntPtr.Zero;
-            if (resourceType.IsCustom)
-                typePtr = Marshal.StringToHGlobalAnsi(resourceType.Name);
-            else
-                typePtr = new IntPtr(resourceType.ID);
+            IntPtr typePtr = resourceType.GetLPSZ();
 
-            //if (resourceType.IsCustom)
             EnumResourceNamesDelegate enumDelegate = (hModule, lpszType, lpszName, lParam) =>
             {
                 resList.Add(new ResourceName(lpszName));
                 return true;
             };
-            GC.KeepAlive(enumDelegate);
+
             EnumResourceNames(moduleHandle, typePtr, enumDelegate, IntPtr.Zero);
+
+            GC.KeepAlive(enumDelegate);
+
             if (resourceType.IsCustom)
                 Marshal.FreeHGlobal(typePtr);
+
             return resList;
         }
 
@@ -226,19 +232,45 @@ namespace ResourceExplorer.Native.API
             return buffer;
         }
 
-        //public static IntPtr GetResourceDataHandle(IntPtr hResInfo, IntPtr hModule)
-        //{
-        //    if (hResInfo == IntPtr.Zero || hModule == IntPtr.Zero)
-        //        return IntPtr.Zero;
+        public static bool GetResourceDataPointer(IntPtr hResInfo, IntPtr hModule, out IntPtr dataPtr)
+        {
+            if (hResInfo == IntPtr.Zero || hModule == IntPtr.Zero)
+            {
+                dataPtr = IntPtr.Zero;
+                return false;
+            }
 
-        //    //Load the resource.
-        //    IntPtr hResData = LoadResource(hModule, hResInfo);
-        //    //Lock the resource to read data.
-        //    IntPtr hGlobal = LockResource(hResData);
+            IntPtr hResData = LoadResource(hModule, hResInfo);
+            //Lock the resource to read data.
+            dataPtr = LockResource(hResData);
+            return true;
+        }
 
-        //    return hResData;
+        public static bool GetResourceDataPointer(IntPtr hResInfo, IntPtr hModule, out IntPtr dataPtr, out uint dataSize)
+        {
+            if (hResInfo == IntPtr.Zero || hModule == IntPtr.Zero)
+            {
+                dataPtr = IntPtr.Zero;
+                dataSize = 0;
+                return false;
+            }
 
-        //}
+            IntPtr hResData = LoadResource(hModule, hResInfo);
+            //Lock the resource to read data.
+            dataPtr = LockResource(hResData);
+            dataSize = SizeOfResource(hModule, hResInfo);
+            return true;
+        }
+
+        public static IntPtr GetResourceDataPointer(IntPtr hResInfo, IntPtr hModule)
+        {
+            if (hResInfo == IntPtr.Zero || hModule == IntPtr.Zero)
+                return IntPtr.Zero;
+
+            IntPtr hResData = LoadResource(hModule, hResInfo);
+            //Lock the resource to read data.
+            return LockResource(hResData);
+        }
 
         #endregion
     }

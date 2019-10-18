@@ -474,7 +474,9 @@ namespace ResourceExplorer.UI
                             ImagesListView.Items.Add(lvi);
                         }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                    }
                     
                 }
             }

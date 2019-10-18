@@ -101,6 +101,7 @@
     <Compile Include="Native\Enums\BitmapCompressionMode.cs" />
     <Compile Include="Native\Enums\ImageLoadOption.cs" />
     <Compile Include="Native\Enums\SFGAOF.cs" />
+    <Compile Include="Native\Enums\WM.cs" />
     <Compile Include="Native\PEHelper.cs" />
     <Compile Include="Native\PE\DataSectionFlags.cs" />
     <Compile Include="Native\PE\IMAGE_DATA_DIRECTORY.cs" />
@@ -119,9 +120,10 @@
     <Compile Include="Native\PE\PEHeaderInfo.cs" />
     <Compile Include="Native\SafeProcessHandle.cs" />
     <Compile Include="Native\StructResult.cs" />
-    <Compile Include="Native\Types\BITMAPINFOHEADER.cs" />
+    <Compile Include="Native\Types\Bitmaps.cs" />
     <Compile Include="Native\Types\CLIENT_ID.cs" />
     <Compile Include="Native\Types\GENERIC_MAPPING.cs" />
+    <Compile Include="Native\Types\Icons.cs" />
     <Compile Include="Native\Types\MODULEENTRY32.cs" />
     <Compile Include="Native\Types\PROCESSENTRY32.cs" />
     <Compile Include="Native\Types\ResourceName.cs" />
@@ -156,6 +158,7 @@
     </Compile>
     <Compile Include="Utilities\ExtensionMethods\StreamExtensions.cs" />
     <Compile Include="Utilities\ExtensionMethods\StringExtensions.cs" />
+    <Compile Include="Utilities\ImageHelper.cs" />
     <Compile Include="Utilities\PathUtils.cs" />
     <Compile Include="Utilities\StreamUtils.cs" />
     <Compile Include="Utilities\UserAccount.cs" />
