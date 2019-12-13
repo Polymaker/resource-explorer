@@ -8,11 +8,13 @@ namespace ResourceExplorer.Native.Types
 {
     public class ResourceName : IDisposable
     {
-        public uint ID { get; set; }
-        public IntPtr Handle { get; set; }
-        public string Name { get; set; }
+        public uint ID { get; private set; }
+        public IntPtr Handle { get; private set; }
+        public string Name { get; private set; }
 
         public bool IsNamedResource { get; private set; }
+
+        public bool IsDisposed { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ResourceName"/> class.
@@ -34,20 +36,23 @@ namespace ResourceExplorer.Native.Types
             }
         }
 
-
-
         ~ResourceName()
         {
-            Free();
+            if (!IsDisposed)
+                Free();
         }
 
         public void Dispose()
         {
-            Free();
-            GC.SuppressFinalize(this);
+            if (!IsDisposed)
+            {
+                Free();
+                GC.SuppressFinalize(this);
+                IsDisposed = true;
+            }
         }
 
-        void Free()
+        private void Free()
         {
             if (Handle != IntPtr.Zero)
             {
@@ -55,6 +60,11 @@ namespace ResourceExplorer.Native.Types
                 catch { }
                 Handle = IntPtr.Zero;
             }
+        }
+
+        public override string ToString()
+        {
+            return Name;
         }
     }
 }

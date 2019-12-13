@@ -9,22 +9,13 @@ namespace ResourceExplorer.ResourceAccess.Native
 {
     public class NativeResourceInfo : ResourceInfo
     {
-        private readonly ContentType _ContentType;
-
         public NativeResourceType ResourceType { get; }
 
         public KnownResourceType NativeType => ResourceType.KnownType;
 
         public uint Id { get; }
 
-        public override bool IsNative
-        {
-            get { return true; }
-        }
-
         public bool IsNamedResource { get; }
-
-        public override ContentType ContentType { get { return _ContentType; } }
 
         public NativeResourceInfo(ModuleInfo module, NativeResourceType type, ResourceExplorer.Native.Types.ResourceName resourceName)
             : base(module, resourceName.Name)
@@ -32,10 +23,13 @@ namespace ResourceExplorer.ResourceAccess.Native
             ResourceType = type;
             Id = resourceName.ID;
             IsNamedResource = resourceName.IsNamedResource;
+        }
 
-            if (type.IsKnownType)
+        public override void DetectContentType()
+        {
+            if (ResourceType.IsKnownType)
             {
-                switch (type.KnownType)
+                switch (ResourceType.KnownType)
                 {
                     case KnownResourceType.Icon:
                     case KnownResourceType.IconGroup:
@@ -43,28 +37,31 @@ namespace ResourceExplorer.ResourceAccess.Native
                     case KnownResourceType.CursorGroup:
                     case KnownResourceType.AnimatedIcon:
                     case KnownResourceType.AnimatedCursor:
-                        _ContentType = ContentType.Icon;
+                        ContentType = ContentType.Icon;
                         break;
                     case KnownResourceType.Bitmap:
-                        _ContentType = ContentType.Image;
+                        ContentType = ContentType.Image;
+                        break;
+                    case KnownResourceType.String:
+                        ContentType = ContentType.Text;
                         break;
                     default:
-                        _ContentType = ContentType.Unknown;
+                        ContentType = ContentType.Unknown;
                         break;
                 }
             }
             else
             {
-                switch (type.Name)
+                switch (ResourceType.Name.ToUpper())
                 {
                     case "PNG":
                     case "BMP":
                     case "BITMAP":
                     case "IMAGE":
-                        _ContentType = ContentType.Image;
+                        ContentType = ContentType.Image;
                         break;
                     default:
-                        _ContentType = ContentType.Unknown;
+                        ContentType = ContentType.Unknown;
                         break;
                 }
             }
@@ -85,6 +82,11 @@ namespace ResourceExplorer.ResourceAccess.Native
                 if (ResourceType.IsCustom)
                     Marshal.FreeHGlobal(resType);
             }
+        }
+
+        public override string ToString()
+        {
+            return $"{ResourceType} {Name}";
         }
     }
 }

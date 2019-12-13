@@ -13,12 +13,8 @@ namespace ResourceExplorer.ResourceAccess.Managed
     public class ResourceManagerProxy : MarshalByRefObject, IDisposable
     {
         private readonly System.Resources.ResourceManager manager;
-        private readonly Dictionary<string, Type> _Resources;
 
-        public Dictionary<string, Type> Resources
-        {
-            get { return _Resources; }
-        }
+        public Dictionary<string, Type> Resources { get; }
 
         public IList<string> ResourceNames
         {
@@ -39,11 +35,11 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
             var baseResSet = manager.GetResourceSet(CultureInfo.InvariantCulture, false, false);
 
-            _Resources = new Dictionary<string, Type>();
+            Resources = new Dictionary<string, Type>();
 
             foreach (DictionaryEntry resEntry in baseResSet)
             {
-                _Resources.Add((string)resEntry.Key, resEntry.Value.GetType());
+                Resources.Add((string)resEntry.Key, resEntry.Value.GetType());
             }
         }
 

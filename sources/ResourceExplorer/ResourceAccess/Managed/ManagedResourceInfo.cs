@@ -7,37 +7,24 @@ namespace ResourceExplorer.ResourceAccess.Managed
 {
     public class ManagedResourceInfo : ResourceInfo
     {
-        private readonly string _ResourceManagerName;
-        private readonly ManagedResourceType _Kind;
         private Type _SystemType;
-        private /*readonly*/ ContentType _ContentType;
-
-        public override bool IsNative
-        {
-            get { return false; }
-        }
 
         public Type SystemType
         {
             get { return _SystemType; }
             set
             {
-                _SystemType = value;
-                CheckContentType();
+                if (_SystemType != value)
+                {
+                    _SystemType = value;
+                    DetectContentType();
+                }
             }
         }
 
-        public ManagedResourceType Kind
-        {
-            get { return _Kind; }
-        }
+        public ManagedResourceType Kind { get; }
 
-        public override ContentType ContentType { get { return _ContentType; } }
-
-        public string ResourceManagerName
-        {
-            get { return _ResourceManagerName; }
-        }
+        public string ResourceManagerName { get; }
 
         public ResourceManagerInfo ResourceManager
         {
@@ -64,30 +51,28 @@ namespace ResourceExplorer.ResourceAccess.Managed
         }
 
         public ManagedResourceInfo(ModuleInfo module, ManagedResourceType kind, string name)
-            : this(module, kind, name, typeof(Object), string.Empty) { }
+            : this(module, kind, name, typeof(object), string.Empty) { }
 
         public ManagedResourceInfo(ModuleInfo module, ManagedResourceType kind, string name, Type systemType)
             : this(module, kind, name, systemType, string.Empty) { }
 
         public ManagedResourceInfo(ModuleInfo module, ManagedResourceType kind, string name, Type systemType, string managerName) : base(module, name)
         {
-            _Kind = kind;
+            Kind = kind;
             _SystemType = systemType;
-            _ResourceManagerName = managerName;
-            _ContentType = ContentType.Unknown;
-            CheckContentType();
+            ResourceManagerName = managerName;
         }
 
-        private void CheckContentType()
+        public override void DetectContentType()
         {
             if (typeof(System.Drawing.Image).IsAssignableFrom(SystemType))
-                _ContentType = ContentType.Image;
+                ContentType = ContentType.Image;
             else if (typeof(System.Drawing.Icon).IsAssignableFrom(SystemType))
-                _ContentType = ContentType.Icon;
+                ContentType = ContentType.Icon;
             else if (Kind == ManagedResourceType.ResourceEntry)
-                _ContentType = ContentType.Data;
+                ContentType = ContentType.Data;
             else// if (Kind == ManagedResourceType.Embedded)
-                _ContentType = ContentType.Unknown;
+                ContentType = ContentType.Unknown;
         }
     }
 }

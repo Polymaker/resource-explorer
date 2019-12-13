@@ -142,6 +142,9 @@ namespace ResourceExplorer.ResourceAccess
             if (IsManaged)
                 LoadManagedResources();
 
+            foreach (var resInfo in Resources)
+                resInfo.DetectContentType();
+
             ResourcesLoaded = true;
         }
 
@@ -253,7 +256,10 @@ namespace ResourceExplorer.ResourceAccess
                 var peInfo = PEHeaderInfo.ReadInfo(fileStream);
                 var importTableInfo = peInfo.ImageTables[1];
                 var importSection = peInfo.GetSectionForTable(importTableInfo);
-
+                string system32Path = peInfo.Is32Bit ? 
+                    Environment.GetFolderPath(Environment.SpecialFolder.SystemX86) :
+                    Environment.GetFolderPath(Environment.SpecialFolder.System);
+                
                 if (importSection.SizeOfRawData > 0)
                 {
                     var dirOffset = importSection.PointerToRawData + (importTableInfo.VirtualAddress - importSection.VirtualAddress);
@@ -278,10 +284,12 @@ namespace ResourceExplorer.ResourceAccess
                             fileStream.Seek(dirNameOffset, SeekOrigin.Begin);
 
                             var moduleName = binaryReader.ReadNullTerminatedString();
-                            _ReferencedModules.Add(new ModuleRef(ModuleType.Native, moduleName)
+                            string assemblyLocation = FindModuleLocation(Path.GetDirectoryName(Location), moduleName);
+                            if (string.IsNullOrEmpty(assemblyLocation))
                             {
-                                Location = FindModuleLocation(Path.GetDirectoryName(Location), moduleName)
-                            });
+                                assemblyLocation = FindModuleLocation(system32Path, moduleName);
+                            }
+                            _ReferencedModules.Add(new ModuleRef(ModuleType.Native, moduleName, assemblyLocation));
 
                             fileStream.Position = currentStreamPos;
                         }
@@ -296,7 +304,7 @@ namespace ResourceExplorer.ResourceAccess
         {
             var moduleDirectory = Path.GetDirectoryName(Location);
             
-            using (var tempAppDom = new TemporaryAppDomain(FileName, moduleDirectory))
+            using (var tempAppDom = new TemporaryAppDomain(FileName))
             {
                 var tmpAssembly = tempAppDom.LoadFrom(Location);
                 if (tmpAssembly == null)
@@ -308,21 +316,18 @@ namespace ResourceExplorer.ResourceAccess
                     if (string.IsNullOrEmpty(assemLocation))
                         assemLocation = FindModuleLocation(moduleDirectory, assemName.Name);
 
-                    _ReferencedModules.Add(new ModuleRef(assemName)
-                    {
-                        Location = assemLocation
-                    });
+                    _ReferencedModules.Add(new ModuleRef(assemName, assemLocation));
                 }
             }
         }
 
         private string FindModuleLocation(string lookupDirectory, string moduleName)
         {
-            //TODO: check GAC and systrm directorires
+            //TODO: check GAC and system directorires
             var matchingFiles = Directory.EnumerateFiles(lookupDirectory, moduleName + ".*");
-            if (matchingFiles.Any())
+            if (matchingFiles.Any(x=> x.ToLower().EndsWith("dll") || x.ToLower().EndsWith("exe")))
                 return matchingFiles.First();
-            return null;
+            return string.Empty;
         }
 
         #endregion

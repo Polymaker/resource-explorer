@@ -9,19 +9,9 @@ namespace ResourceExplorer.ResourceAccess.Managed
 {
     public class SatelliteAssemblyInfo
     {
-        //private bool _IsLoaded;
-        private readonly string _Location;
-        private readonly CultureInfo _Culture;
+        public string Location { get; }
 
-        public string Location
-        {
-            get { return _Location; }
-        }
-
-        public CultureInfo Culture
-        {
-            get { return _Culture; }
-        }
+        public CultureInfo Culture { get; }
 
         //public bool IsLoaded
         //{
@@ -30,8 +20,8 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
         public SatelliteAssemblyInfo(string location, CultureInfo culture)
         {
-            _Location = location;
-            _Culture = culture;
+            Location = location;
+            Culture = culture;
         }
 
         //public void LoadIntoAppDomain()

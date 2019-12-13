@@ -126,11 +126,10 @@ namespace ResourceExplorer.ResourceAccess
 
                 if (resourceType.IsKnownType && resourceType.KnownType == KnownResourceType.Bitmap)
                 {
-                    if (GetResourcePointer(nativeResource, out IntPtr dataPtr, out uint dataSize))
+                    if (GetResourcePointer(nativeResource, out IntPtr dataPtr, out _))
                     {
-                        var result = ImageHelper.ImageFromUnmanagedResource(dataPtr, dataSize);
-                        if (result != null)
-                            return result;
+                        var img = net_bmp.BitmapImage.Read(dataPtr);
+                        return img.GetSystemBitmap();
                     }
 
                     if (nativeResource.IsNamedResource)
@@ -147,16 +146,34 @@ namespace ResourceExplorer.ResourceAccess
             }
             else if (resource is ManagedResourceInfo managedResource)
             {
-                if (!typeof(Image).IsAssignableFrom(managedResource.SystemType))
-                    return null;
+                //if (!typeof(Image).IsAssignableFrom(managedResource.SystemType))
+                //    return null;
 
-                if (managedResource.IsResourceEntry)
+                if (managedResource.IsResourceEntry && 
+                    typeof(Image).IsAssignableFrom(managedResource.SystemType))
                 {
                     var resourceManager = GetResourceManager(managedResource);
                     var proxyImage = resourceManager.GetObject(managedResource.Name) as Image;
                     return TempAppDomain.ReleaseObject(proxyImage);
                 }
 
+                if (typeof(Stream).IsAssignableFrom(managedResource.SystemType))
+                {
+                    var imageStream = GetStream(resource);
+                    if (imageStream != null)
+                    {
+                        imageStream.Position = 0;
+                        var header = net_bmp.BitmapHeader.Read(imageStream, true);
+                        if (header != null)
+                        {
+                            imageStream.Position = 0;
+                            var bmp = net_bmp.BitmapImage.Read(imageStream);
+                            return bmp?.GetSystemBitmap();
+                        }
+                        return Image.FromStream(imageStream);
+                    }
+                    //return TempAppDomain.ReleaseObject(proxyStream);
+                }
                 //Embedded resources are always stored as stream, and we can't know for sure if a stream is an image
             }
 

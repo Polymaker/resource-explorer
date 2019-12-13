@@ -113,39 +113,55 @@ namespace ResourceExplorer.Utilities
 
         public static Icon IconFromUnmanagedResource(IntPtr dibPtr, uint dataSize)
         {
-            var bih = Marshal.PtrToStructure<BITMAPINFOHEADER>(dibPtr);
-
-            int bmpDataSize = (int)dataSize;
-            int totalSize = ICONDIR.SIZE + ICONDIRENTRY.SIZE + bmpDataSize;
+            int totalSize = ICONDIR.SIZE + ICONDIRENTRY.SIZE + (int)dataSize;
 
             IntPtr iconPtr = Marshal.AllocHGlobal(totalSize);
-            try
-            {
-                var dir = new ICONDIR()
-                {
-                    Type = 1,
-                    ImageCount = 1
-                };
 
-                Marshal.StructureToPtr(dir, iconPtr, false);
+            ICONDIRENTRY iconEntry;
+            if (Marshal.ReadInt32(dibPtr) == 1196314761) //PNG
+            {
+                iconEntry = new ICONDIRENTRY()
+                {
+                    Width = 0,
+                    Height = 0,
+                    Colors = 0,
+                    ValueA = 1,
+                    ValueB = 32,
+                    Size = dataSize,
+                    Offset = 22,
+                };
+            }
+            else
+            {
+                var bih = Marshal.PtrToStructure<BITMAPINFOHEADER>(dibPtr);
 
                 int adjHeight = bih.Height;
                 if (bih.Height == bih.Width * 2)
                     adjHeight = bih.Width;
 
-                var dirEntry = new ICONDIRENTRY()
+                iconEntry = new ICONDIRENTRY()
                 {
                     Width = bih.Width > 255 ? (byte)0 : (byte)bih.Width,
                     Height = adjHeight > 255 ? (byte)0 : (byte)adjHeight,
                     Colors = (byte)bih.ColorUsed,
                     ValueA = (byte)bih.Planes,
-                    ValueB = (short)bih.BitCount,
-                    Size = bmpDataSize,
+                    ValueB = bih.BitCount,
+                    Size = dataSize,
                     Offset = 22,
                 };
+            }
 
-                Marshal.StructureToPtr(dirEntry, iconPtr + ICONDIR.SIZE, false);
-                Kernel32.CopyMemory(iconPtr + ICONDIR.SIZE + ICONDIRENTRY.SIZE, dibPtr, (uint)bmpDataSize);
+            var iconDir = new ICONDIR()
+            {
+                Type = 1,
+                ImageCount = 1
+            };
+
+            try
+            {
+                Marshal.StructureToPtr(iconDir, iconPtr, false);
+                Marshal.StructureToPtr(iconEntry, iconPtr + ICONDIR.SIZE, false);
+                Kernel32.CopyMemory(iconPtr + ICONDIR.SIZE + ICONDIRENTRY.SIZE, dibPtr, dataSize);
                 byte[] buffer = new byte[totalSize];
                 Marshal.Copy(iconPtr, buffer, 0, totalSize);
 
@@ -160,7 +176,7 @@ namespace ResourceExplorer.Utilities
 
         public static Icon CursorFromUnmanagedResource(IntPtr dibPtr, uint dataSize, bool asIcon = true)
         {
-
+            
             var bih = Marshal.PtrToStructure<BITMAPINFOHEADER>(dibPtr + 4);
 
             int bmpDataSize = (int)dataSize - 4;
@@ -186,9 +202,9 @@ namespace ResourceExplorer.Utilities
                     Width = bih.Width > 255 ? (byte)0 : (byte)bih.Width,
                     Height = adjHeight > 255 ? (byte)0 : (byte)adjHeight,
                     Colors = (byte)bih.ColorUsed,
-                    ValueA = asIcon ? (short)bih.Planes : Marshal.ReadInt16(dibPtr),
-                    ValueB = asIcon ? (short)bih.BitCount : Marshal.ReadInt16(dibPtr, 2),
-                    Size = bmpDataSize,
+                    ValueA = asIcon ? bih.Planes : (ushort)Marshal.ReadInt16(dibPtr),
+                    ValueB = asIcon ? bih.BitCount : (ushort)Marshal.ReadInt16(dibPtr, 2),
+                    Size = (uint)bmpDataSize,
                     Offset = 22
                 };
 

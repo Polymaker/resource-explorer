@@ -15,46 +15,35 @@ using System.Threading.Tasks;
 namespace ResourceExplorer.ResourceAccess.Managed
 {
     [Serializable]
-    public class TemporaryAppDomain : IDisposable
+    public partial class TemporaryAppDomain : IDisposable
     {
-        private readonly int _Id;
-        private bool _IsDisposed;
         private AppDomain Domain;
         private static ConcurrentDictionary<int, TemporaryAppDomain> ActiveDomains;
         private ConcurrentDictionary<string, TemporaryAssembly> _LoadedAssemblies;
 
         private CrossDomainSerializer Deserializer;
-
+        private TemporaryAssemblyResolver AssemblyResolver;
         internal static List<string> AssemblyDirectories { get; } = new List<string>();
 
-        public int Id
-        {
-            get { return _Id; }
-        }
-        
-        public string Name
-        {
-            get { return Domain.FriendlyName; }
-        }
+        public int Id { get; }
 
-        public bool IsDisposed
-        {
-            get { return _IsDisposed; }
-        }
+        public string Name => Domain.FriendlyName;
+
+        public bool IsDisposed { get; private set; }
 
         public IEnumerable<TemporaryAssembly> LoadedAssemblies
         {
             get { return _LoadedAssemblies.Values; }
         }
 
-        #region constructors...
+        #region Constructors...
 
         static TemporaryAppDomain()
         {
             ActiveDomains = new ConcurrentDictionary<int, TemporaryAppDomain>();
         }
 
-        public TemporaryAppDomain(string name, string directory = null)
+        public TemporaryAppDomain(string name/*, string directory = null*/)
         {
             _LoadedAssemblies = new ConcurrentDictionary<string, TemporaryAssembly>();
 
@@ -64,44 +53,38 @@ namespace ResourceExplorer.ResourceAccess.Managed
             //    {
             //        ApplicationBase = directory
             //    };
-            //    var adevidence = AppDomain.CurrentDomain.Evidence;
-            //    Domain = AppDomain.CreateDomain(name, adevidence, domaininfo);
+            //    var adEvidence = AppDomain.CurrentDomain.Evidence;
+            //    Domain = AppDomain.CreateDomain(name, adEvidence, domaininfo);
             //}
             //else
                 Domain = AppDomain.CreateDomain(name);
-           
-            //Domain.AssemblyResolve += Domain_AssemblyResolve;
-            _Id = Domain.Id;
-            Register(this);
-            Deserializer = CreateRefObject<CrossDomainSerializer>();
-        }
 
-        private Assembly Domain_AssemblyResolve(object sender, ResolveEventArgs args)
-        {
-            //foreach (var asssemblyDir in AssemblyDirectories)
+            Id = Domain.Id;
+            Register(this);
+
+            //if (!string.IsNullOrEmpty(directory))
             //{
-            //    foreach (var assemFile in Directory.EnumerateFiles(asssemblyDir, "*.dll"))
-            //    {
-            //        try
-            //        {
-            //            var name = AssemblyName.GetAssemblyName(assemFile);
-            //            if (name.FullName == args.Name)
-            //                return Assembly.LoadFrom(assemFile);
-                        
-            //        }
-            //        catch { }
-                    
-            //    }
+            //    var curAsm = Assembly.GetExecutingAssembly().Location;
+            //    Assembly.LoadFrom(curAsm);
+            //    //LoadFrom(curAsm);
             //}
-            return null;
+
+            Deserializer = CreateRefObject<CrossDomainSerializer>();
+            AssemblyResolver = CreateRefObject<TemporaryAssemblyResolver>();
+            AssemblyResolver.Attach();
+            AssemblyResolver.SetNonManagedAssemblies(TemporaryAssemblyResolver.NonManagedAssemblies.ToArray());
+
+
         }
 
         public TemporaryAppDomain()
             : this(Guid.NewGuid().ToString()) { }
 
+
+
         #endregion
 
-        #region deconstructors...
+        #region Deconstructors...
 
         ~TemporaryAppDomain()
         {
@@ -110,11 +93,14 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
         public void Dispose()
         {
-            _IsDisposed = true;
+            IsDisposed = true;
             Unregister(this);
             if (Domain != null)
             {
-                //Domain.AssemblyResolve -= Domain_AssemblyResolve;
+                TemporaryAssemblyResolver.AddNonManagedAssemblies(AssemblyResolver.GetNonManagedAssemblies());
+                AssemblyResolver.Dettach();
+                AssemblyResolver = null;
+                Deserializer = null;
                 try { AppDomain.Unload(Domain); }
                 catch (AppDomainUnloadedException)
                 {
@@ -131,6 +117,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
         #endregion
 
+
         #region Temp domains register
 
         private static void Register(TemporaryAppDomain domain)
@@ -138,21 +125,23 @@ namespace ResourceExplorer.ResourceAccess.Managed
             ActiveDomains.TryAdd(domain.Id, domain);
         }
 
-        private static void Unregister(TemporaryAppDomain domain)
+        private static bool Unregister(TemporaryAppDomain domain)
         {
-            TemporaryAppDomain dummy;
-            ActiveDomains.TryRemove(domain.Id, out dummy);
+            int ctr = 0;
+            while (ctr++ < 10)
+            {
+                if (ActiveDomains.TryRemove(domain.Id, out _))
+                    return true;
+            }
+            return false;
         }
-
-        //private static void 
 
         public static TemporaryAppDomain Current
         {
             get
             {
                 var curAppDom = AppDomain.CurrentDomain;
-                TemporaryAppDomain value;
-                if (ActiveDomains.TryGetValue(curAppDom.Id, out value) && !value.IsDisposed)
+                if (ActiveDomains.TryGetValue(curAppDom.Id, out TemporaryAppDomain value) && !value.IsDisposed)
                     return value;
                 return null;
             }
@@ -229,7 +218,6 @@ namespace ResourceExplorer.ResourceAccess.Managed
                 {
                     return tmpAssembly.Location;
                 }
-
             }
             catch { }
             return string.Empty;

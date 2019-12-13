@@ -7,29 +7,31 @@ namespace ResourceExplorer.ResourceAccess
 {
     public abstract class ResourceInfo
     {
-        private readonly ModuleInfo _Module;
-        private readonly string _Name;
+        public ModuleInfo Module { get; }
 
-        public ModuleInfo Module
-        {
-            get { return _Module; }
-        }
+        public string Name { get; }
 
-        public string Name
-        {
-            get { return _Name; }
-        }
+        public bool IsNative => GetType() == typeof(Native.NativeResourceInfo);
 
-        public abstract bool IsNative { get; }
+        public bool IsManaged { get { return !IsNative; } }
 
-        public /*virtual*/ bool IsManaged { get { return !IsNative; } }
-
-        public abstract ContentType ContentType { get; }
+        public ContentType ContentType { get; protected set; }
 
         public ResourceInfo(ModuleInfo module, string name)
         {
-            _Module = module;
-            _Name = name;
+            Module = module;
+            Name = name;
+            ContentType = ContentType.Unknown;
+        }
+
+        public virtual void DetectContentType()
+        {
+
+        }
+
+        public override string ToString()
+        {
+            return Name;
         }
     }
 }

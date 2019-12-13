@@ -8,46 +8,46 @@ namespace ResourceExplorer.ResourceAccess
 {
     public class ModuleRef
     {
-        private readonly ModuleType _Type;
-        private readonly string _ModuleName;
-
-        public string ModuleName
-        {
-            get { return _ModuleName; }
-        }
+        public string ModuleName { get; }
 
         public string FullName { get; set; }
 
         public string Location { get; set; }
 
-        public ModuleType Type
-        {
-            get { return _Type; }
-        }
+        public ModuleType Type { get; }
+
+        public bool IsSystem { get; set; }
 
         public ModuleRef(ModuleType type, string moduleName)
         {
-            _Type = type;
-            _ModuleName = moduleName;
+            Type = type;
+            ModuleName = moduleName;
         }
 
-        public ModuleRef(AssemblyName assemName)
+        public ModuleRef(AssemblyName assemName, string location = null)
+            : this(ModuleType.Managed, assemName.Name, location)
         {
-            _Type = ModuleType.Managed;
-            _ModuleName = assemName.Name;
             FullName = assemName.FullName;
-            Location = assemName.CodeBase;
+            Location = location ?? string.Empty;
         }
 
-        public bool IsSystemModule()
+        public ModuleRef(ModuleType type, string moduleName, string location)
         {
-            if (Location != null)
-            {
-                if (Location.Contains(Environment.GetFolderPath(Environment.SpecialFolder.System))
-                    || Location.Contains(Environment.GetFolderPath(Environment.SpecialFolder.SystemX86)))
-                    return true;
-            }
-            return false;
+            Type = type;
+            ModuleName = moduleName;
+            Location = location ?? string.Empty;
+            IsSystem = Location.ToUpper().Contains("WINDOWS");
         }
+
+        //public bool IsSystemModule()
+        //{
+        //    if (Location != null)
+        //    {
+        //        if (Location.Contains(Environment.GetFolderPath(Environment.SpecialFolder.System))
+        //            || Location.Contains(Environment.GetFolderPath(Environment.SpecialFolder.SystemX86)))
+        //            return true;
+        //    }
+        //    return false;
+        //}
     }
 }

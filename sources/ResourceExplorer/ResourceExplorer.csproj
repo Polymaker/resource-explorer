@@ -76,6 +76,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="net-bmp">
+      <HintPath>..\..\Libraries\net-bmp.dll</HintPath>
+    </Reference>
     <Reference Include="ObjectListView, Version=2.9.1.1072, Culture=neutral, PublicKeyToken=b1c5bf581481bcd4, processorArchitecture=MSIL">
       <HintPath>packages\ObjectListView.Official.2.9.1\lib\net20\ObjectListView.dll</HintPath>
       <Private>True</Private>
@@ -142,6 +145,7 @@
     <Compile Include="ResourceAccess\Managed\SatelliteAssemblyInfo.cs" />
     <Compile Include="ResourceAccess\Managed\TemporaryAppDomain.cs" />
     <Compile Include="ResourceAccess\Managed\TemporaryAssembly.cs" />
+    <Compile Include="ResourceAccess\Managed\TemporaryAssemblyResolver.cs" />
     <Compile Include="ResourceAccess\ModuleInfo.cs" />
     <Compile Include="ResourceAccess\ModuleRef.cs" />
     <Compile Include="ResourceAccess\ModuleType.cs" />

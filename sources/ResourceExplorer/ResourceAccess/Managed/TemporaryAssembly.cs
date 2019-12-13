@@ -13,46 +13,41 @@ namespace ResourceExplorer.ResourceAccess.Managed
 {
     public class TemporaryAssembly : MarshalByRefObject
     {
-        private /*readonly*/ Assembly _Library;
-
-        private Assembly Library
-        {
-            get { return _Library; }
-        }
+        private Assembly Library { get; set; }
 
         public string Name
         {
-            get { return _Library != null ? Library.GetName().Name : string.Empty; }
+            get { return Library != null ? Library.GetName().Name : string.Empty; }
         }
 
         public string FullName
         {
-            get { return _Library != null ? Library.FullName : string.Empty; }
+            get { return Library != null ? Library.FullName : string.Empty; }
         }
 
         public string Location
         {
-            get { return _Library != null ? Library.Location : string.Empty; }
+            get { return Library != null ? Library.Location : string.Empty; }
         }
 
         public TemporaryAssembly()
         {
-            _Library = null;
+            Library = null;
         }
 
         public TemporaryAssembly(string assemblyLocation)
         {
-            _Library = Assembly.LoadFrom(assemblyLocation);
-            LoadLocation();
+            Library = Assembly.LoadFrom(assemblyLocation);
+            LoadAssemblyDirectory();
         }
 
         public bool LoadFrom(string assemblyLocation)
         {
-            if (_Library == null)
+            if (Library == null)
             {
                 try
                 {
-                    _Library = Assembly.LoadFrom(assemblyLocation);
+                    Library = Assembly.LoadFrom(assemblyLocation);
 
                 }
                 catch (Exception ex)
@@ -60,36 +55,37 @@ namespace ResourceExplorer.ResourceAccess.Managed
                     Trace.WriteLine(string.Format("Couldn't load assembly '{0}':\r\n\t{1}", assemblyLocation, ex));
                 }
             }
-            LoadLocation();
-            return _Library != null;
+            LoadAssemblyDirectory();
+            return Library != null;
         }
 
         public bool Load(string assemblyString)
         {
-            if (_Library == null)
+            if (Library == null)
             {
                 try
                 {
-                    _Library = Assembly.Load(assemblyString);
+                    Library = Assembly.Load(assemblyString);
                 }
                 catch(Exception ex)
                 {
                     Trace.WriteLine(string.Format("Couldn't load assembly '{0}':\r\n\t{1}", assemblyString, ex));
                 }
             }
-            LoadLocation();
-            return _Library != null;
+            LoadAssemblyDirectory();
+            return Library != null;
         }
 
-        private void LoadLocation()
+        private void LoadAssemblyDirectory()
         {
-            if (_Library != null)
+            if (Library != null)
             {
-                string directory = Path.GetDirectoryName(_Library.Location);
+                string directory = Path.GetDirectoryName(Library.Location);
                 if (directory.ToUpper().Contains("WINDOWS\\") && directory.Contains("GAC"))
                     return;
-                if (!TemporaryAppDomain.AssemblyDirectories.Contains(directory))
-                    TemporaryAppDomain.AssemblyDirectories.Add(directory);
+                
+                if (!TemporaryAssemblyResolver.AssemblyDirectories.Contains(directory))
+                    TemporaryAssemblyResolver.AssemblyDirectories.Add(directory);
             }
         }
 
@@ -118,7 +114,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
                         refCount[namespaceSegment]++;
                 }
             }
-            var commonName = refCount.OrderByDescending(kv => kv.Value).First().Key;
+            var commonName = refCount.OrderByDescending(kv => kv.Value).FirstOrDefault().Key;
 
             return commonName;
         }
@@ -199,7 +195,7 @@ namespace ResourceExplorer.ResourceAccess.Managed
 
         public override string ToString()
         {
-            return _Library != null ? Name : "Invalid Module";
+            return Library != null ? Name : "Invalid Module";
         }
     }
 }

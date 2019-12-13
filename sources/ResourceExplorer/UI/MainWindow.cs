@@ -145,8 +145,9 @@ namespace ResourceExplorer.UI
 
             if (expand)
                 treeViewResources.Expand(treeNode);
-            //module.LoadResources();
-            //FillImageResourcesList(module);
+
+            module.LoadResources();
+            FillImageResourcesList(module);
         }
 
         #region Context Menu
@@ -283,7 +284,7 @@ namespace ResourceExplorer.UI
                     nodes.Add(new NodeGroup("Referenced Modules",
                         Module.ReferencedModules
                             .OrderByDescending(m => m.Type == ModuleType.Native)
-                            .ThenByDescending(m => m.IsSystemModule())
+                            .ThenByDescending(m => m.IsSystem)
                             .ThenBy(m => m.ModuleName)
                             .Select(x => new ModuleRefNode(x))));
                 }
@@ -494,7 +495,9 @@ namespace ResourceExplorer.UI
                                     g.InterpolationMode = scale < 1 ?
                                         System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic :
                                         System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                                    g.DrawImage(image, 0, 0, (int)(image.Width * scale), (int)(image.Height * scale));
+                                    int sH = (int)(image.Height * scale);
+                                    int sW = (int)(image.Width * scale);
+                                    g.DrawImage(image, (64 - sW) / 2, (64 - sH) / 2, sW, sH);
                                 }
                                 image.Dispose();
                                 image = bmp2;
@@ -518,6 +521,28 @@ namespace ResourceExplorer.UI
                             lvi.ImageKey = resName;
                             ImagesListView.Items.Add(lvi);
                         }
+                        
+                        if (resource.IsManaged)
+                        {
+                            var managedResource = (ManagedResourceInfo)resource;
+                            
+                            if (managedResource is ResourceManagerInfo resourceManager)
+                            {
+                                foreach(var entry in resourceManager.Entries)
+                                {
+                                    if (entry.Name.EndsWith("png") || entry.Name.EndsWith("bmp") || entry.Name.EndsWith("jpg"))
+                                    {
+                                        var resImage = accessor.GetImage(entry);
+                                        string resName = $"Res_{imageIndex++}";
+                                        ResourcesImages.Images.Add(resName, resImage);
+                                        var lvi = new ListViewItem(entry.Name);
+                                        lvi.ImageKey = resName;
+
+                                        ImagesListView.Items.Add(lvi);
+                                    }
+                                }
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -540,25 +565,25 @@ namespace ResourceExplorer.UI
                         resImage = resAccess.GetImage(resourceNode.Resource);
 
 
-                    if (resImage != null)
-                    {
-                        using (var sfd = new SaveFileDialog())
-                        {
-                            var imageFormat = resImage.RawFormat;
-                            if (resImage.PixelFormat == PixelFormat.Format32bppArgb)
-                                imageFormat = ImageFormat.Png;
+                    //if (resImage != null)
+                    //{
+                    //    using (var sfd = new SaveFileDialog())
+                    //    {
+                    //        var imageFormat = resImage.RawFormat;
+                    //        if (resImage.PixelFormat == PixelFormat.Format32bppArgb)
+                    //            imageFormat = ImageFormat.Png;
 
-                            if (imageFormat.Equals(ImageFormat.Png))
-                                sfd.FileName = $"{resourceNode.Resource.Name}.png";
-                            else
-                                sfd.FileName = $"{resourceNode.Resource.Name}.bmp";
+                    //        if (imageFormat.Equals(ImageFormat.Png))
+                    //            sfd.FileName = $"{resourceNode.Resource.Name}.png";
+                    //        else
+                    //            sfd.FileName = $"{resourceNode.Resource.Name}.bmp";
 
-                            if (sfd.ShowDialog() == DialogResult.OK)
-                            {
-                                resImage.Save(sfd.FileName, imageFormat);
-                            }
-                        }
-                    }
+                    //        if (sfd.ShowDialog() == DialogResult.OK)
+                    //        {
+                    //            resImage.Save(sfd.FileName, imageFormat);
+                    //        }
+                    //    }
+                    //}
 
                     pictureBox1.Image = resImage;
                 }
